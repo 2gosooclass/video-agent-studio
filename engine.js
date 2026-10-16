@@ -16,6 +16,15 @@ const {synthesize} = require('./tts');
 const FPS = 30;
 const GAP = 0.8;
 
+// 자막 스타일 프리셋: 폰트와 크기, 테두리 두께만 바꾸면 분위기가 달라진다
+const CAPTION_PRESETS = {
+  dohyeon: {font: 'Do Hyeon', size: 58, outline: 7},
+  blackhan: {font: 'Black Han Sans', size: 60, outline: 7},
+  jua: {font: 'Jua', size: 58, outline: 7},
+  myeongjo: {font: 'NanumMyeongjo', size: 54, outline: 5},
+  pen: {font: 'Nanum Pen', size: 68, outline: 4},
+};
+
 function run(cmd, args) {
   return new Promise((resolve, reject) => {
     execFile(cmd, args, {maxBuffer: 1024 * 1024 * 64}, (err, stdout, stderr) => {
@@ -45,7 +54,11 @@ function styled(text, keyword) {
 }
 
 async function buildProject(project, onProgress) {
-  const {scenes, workDir, outputPath, keywords = [], tts = {}, fontsDir = null} = project;
+  const {scenes, workDir, outputPath, keywords = [], tts = {}, fontsDir = null, captionStyle = 'dohyeon', aspect = '9:16', title = ''} = project;
+  const preset = CAPTION_PRESETS[captionStyle] || CAPTION_PRESETS.dohyeon;
+  const [VW, VH] = ASPECTS[aspect] || ASPECTS['9:16'];
+  const capSize = aspect === '9:16' ? preset.size : Math.round(preset.size * 0.72);
+  const capMarginV = Math.max(56, Math.round(VH * 0.09));
   fs.mkdirSync(workDir, {recursive: true});
   const audioDir = path.join(workDir, 'audio');
   const segDir = path.join(workDir, 'segments');
@@ -84,7 +97,7 @@ async function buildProject(project, onProgress) {
       '-loop', '1', '-i', scenes[i].image,
       '-i', audioPath,
       '-filter_complex',
-      `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='1+0.05*on/${frames}':d=${frames}:s=1080x1920:fps=${FPS}[v];[1:a]apad[a]`,
+      `[0:v]scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},zoompan=z='1+0.05*on/${frames}':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v];[1:a]apad[a]`,
       '-map', '[v]', '-map', '[a]', '-t', String(segDur),
       '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', segPath,
     ]);
@@ -99,11 +112,16 @@ async function buildProject(project, onProgress) {
   await run(ffmpegPath, ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', joined]);
 
   const lines = [];
-  lines.push('[Script Info]', 'ScriptType: v4.00+', 'PlayResX: 1080', 'PlayResY: 1920', '');
+  lines.push('[Script Info]', 'ScriptType: v4.00+', `PlayResX: ${VW}`, `PlayResY: ${VH}`, '');
   lines.push('[V4+ Styles]');
   lines.push('Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding');
-  lines.push('Style: Main,Do Hyeon,58,&HFFFFFF,&HFFFFFF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,7,2,2,60,60,240,1');
+  lines.push(`Style: Main,${preset.font},${capSize},&HFFFFFF,&HFFFFFF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,${preset.outline},2,2,60,60,${capMarginV},1`);
+  lines.push('Style: Title,Black Han Sans,96,&H003CC9FF,&H003CC9FF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,8,2,8,60,60,110,1');
   lines.push('', '[Events]', 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text');
+  if (title) {
+    const firstDur = starts.length ? starts[0][0] + starts[0][1] : 3;
+    lines.push(`Dialogue: 1,${assTime(0)},${assTime(Math.min(3.2, firstDur))},Title,,0,0,0,,${title}`);
+  }
   scenes.forEach((scene, i) => {
     const [start, nd] = starts[i];
     const sents = scene.narration.split('. ').map((s) => s.trim()).filter(Boolean)
@@ -144,4 +162,89 @@ async function buildProject(project, onProgress) {
   return {outputPath, totalDuration: await duration(outputPath)};
 }
 
-module.exports = {buildProject};
+const {transcribe} = require('./whisper');
+
+const ASPECTS = {'9:16': [1080, 1920], '16:9': [1920, 1080], '1:1': [1080, 1080]};
+
+function srtTime(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.round((s - Math.floor(s)) * 1000);
+  const p = (n, l = 2) => String(n).padStart(l, '0');
+  return `${p(h)}:${p(m)}:${p(sec)},${p(ms, 3)}`;
+}
+
+function fontsConf(workDir, fontsDir) {
+  const fc = [
+    '<?xml version="1.0"?>',
+    '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">',
+    '<fontconfig>',
+    `<dir>${fontsDir}</dir>`,
+    `<cachedir>${path.join(workDir, 'fc-cache')}</cachedir>`,
+    '</fontconfig>',
+  ].join('\n');
+  fs.writeFileSync(path.join(workDir, 'fonts.conf'), fc);
+}
+
+function runWithEnv(cmd, args, env) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, {env, maxBuffer: 1024 * 1024 * 64}, (err, stdout, stderr) => {
+      if (err) reject(new Error((stderr || err.message).slice(-600)));
+      else resolve(stdout);
+    });
+  });
+}
+
+// 영상 모드: 원본 영상에 위스퍼 자막을 입히고 SRT를 함께 만든다.
+async function buildVideoProject(project, onProgress) {
+  const {videoPath, workDir, outputPath, fontsDir = null, captionStyle = 'dohyeon', aspect = '9:16', whisper, title = ''} = project;
+  const [W, H] = ASPECTS[aspect] || ASPECTS['9:16'];
+  const preset = CAPTION_PRESETS[captionStyle] || CAPTION_PRESETS.dohyeon;
+  fs.mkdirSync(workDir, {recursive: true});
+
+  onProgress && onProgress('transcribe', 0, 1);
+  const segments = await transcribe({
+    videoPath,
+    workDir,
+    ffmpegPath,
+    whisperBin: whisper.bin,
+    modelPath: whisper.model,
+    language: whisper.language || 'ko',
+  });
+  if (!segments.length) throw new Error('음성에서 자막을 만들 문장을 찾지 못했습니다.');
+
+  const lines = [];
+  lines.push('[Script Info]', 'ScriptType: v4.00+', `PlayResX: ${W}`, `PlayResY: ${H}`, '');
+  lines.push('[V4+ Styles]');
+  lines.push('Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding');
+  const marginV = Math.max(56, Math.round(H * 0.08));
+  lines.push(`Style: Main,${preset.font},${preset.size},&HFFFFFF,&HFFFFFF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,${preset.outline},2,2,60,60,${marginV},1`);
+  lines.push('Style: Title,Black Han Sans,96,&H003CC9FF,&H003CC9FF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,8,2,8,60,60,110,1');
+  lines.push('', '[Events]', 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text');
+  if (title) {
+    lines.push(`Dialogue: 1,${assTime(0)},${assTime(3.2)},Title,,0,0,0,,${title}`);
+  }
+  segments.forEach((s) => {
+    lines.push(`Dialogue: 0,${assTime(s.start)},${assTime(s.end)},Main,,0,0,0,,${s.text}`);
+  });
+  const assPath = path.join(workDir, 'captions.ass');
+  fs.writeFileSync(assPath, lines.join('\n'));
+
+  const srtPath = outputPath.replace(/\.mp4$/i, '.srt');
+  const srt = segments.map((s, i) => `${i + 1}\n${srtTime(s.start)} --> ${srtTime(s.end)}\n${s.text}`).join('\n\n');
+  fs.writeFileSync(srtPath, srt + '\n');
+
+  onProgress && onProgress('captions', 1, 1);
+  const vf = `scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2,ass=${assPath}`;
+  const args = ['-y', '-loglevel', 'error', '-i', videoPath, '-vf', vf, '-c:a', 'aac', '-b:a', '160k', outputPath];
+  if (fontsDir && fs.existsSync(fontsDir)) {
+    fontsConf(workDir, fontsDir);
+    await runWithEnv(ffmpegPath, args, {...process.env, FONTCONFIG_PATH: workDir});
+  } else {
+    await run(ffmpegPath, args);
+  }
+  return {outputPath, srtPath, totalDuration: await duration(outputPath), segmentCount: segments.length};
+}
+
+module.exports = {buildProject, buildVideoProject, CAPTION_PRESETS, ASPECTS};

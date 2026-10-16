@@ -7,3 +7,8 @@ test-output*.mp4
 *-chk.jpg
 *.log
 .DS_Store
+assets/whisper/*.bin
+assets/whisper/whisper-cli
+assets/whisper/whisper-cli.exe
+assets/whisper/*.dll
+test-video/

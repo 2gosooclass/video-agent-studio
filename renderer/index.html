@@ -41,6 +41,7 @@
 <main>
   <div class="toolbar">
     <button id="addBtn">이미지 추가</button>
+    <button id="videoBtn">영상 추가 (자막 자동)</button>
     <button id="autoBtn" disabled>자동 대본 만들기</button>
     <button id="settingsBtn">설정</button>
     <div class="steps">
@@ -67,9 +68,23 @@
       <button id="saveSettingsBtn">저장</button>
     </div>
   </div>
+  <input id="titleInput" placeholder="제목 (선택 사항, 처음 3초 동안 크게 표시됩니다)" style="background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:10px 12px; font:inherit; font-size:14px;">
+  <div id="videoInfo" style="display:none; background:#1e1f25; border:1px solid #26272e; border-radius:12px; padding:14px 16px; font-size:13.5px;"></div>
   <div id="scenes"><div class="empty">아직 장면이 없습니다. 이미지를 추가해 주세요.</div></div>
 </main>
 <footer>
+  <select id="aspectSelect" title="화면 비율" style="background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:9px 11px; font:inherit; font-size:13px;">
+    <option value="9:16">비율 9:16 세로</option>
+    <option value="16:9">비율 16:9 가로</option>
+    <option value="1:1">비율 1:1 정사각</option>
+  </select>
+  <select id="captionStyleSelect" title="자막 스타일" style="background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:9px 11px; font:inherit; font-size:13px;">
+    <option value="dohyeon">자막: 도현 (방송형)</option>
+    <option value="blackhan">자막: 블랙한 (제목형)</option>
+    <option value="jua">자막: 주아 (친근형)</option>
+    <option value="myeongjo">자막: 명조 (진지형)</option>
+    <option value="pen">자막: 손글씨 (메모형)</option>
+  </select>
   <button class="primary" id="buildBtn" disabled>영상 만들기</button>
   <div id="status">장면을 추가하면 시작할 수 있습니다.</div>
   <button id="openBtn" style="display:none">폴더에서 보기</button>
@@ -114,11 +129,25 @@
   const autoBtn = document.getElementById('autoBtn');
   const settingsPanel = document.getElementById('settingsPanel');
 
+  let videoFile = null;
+
   function sync() {
-    buildBtn.disabled = !(scenes.length && scenes.every((s) => (s.narration || '').trim()));
+    buildBtn.disabled = !(videoFile || (scenes.length && scenes.every((s) => (s.narration || '').trim())));
     autoBtn.disabled = !scenes.length;
-    if (scenes.length) statusEl.textContent = buildBtn.disabled ? '자동 대본 만들기를 누르거나, 장면마다 나레이션을 직접 적어 주세요.' : '준비됐습니다. 영상 만들기를 누르세요.';
+    if (videoFile) statusEl.textContent = '영상이 선택됐습니다. 영상 만들기를 누르면 위스퍼가 자막을 만듭니다.';
+    else if (scenes.length) statusEl.textContent = buildBtn.disabled ? '자동 대본 만들기를 누르거나, 장면마다 나레이션을 직접 적어 주세요.' : '준비됐습니다. 영상 만들기를 누르세요.';
   }
+
+  document.getElementById('videoBtn').addEventListener('click', async () => {
+    const files = await window.agent.pickVideos();
+    if (!files.length) return;
+    videoFile = files[0];
+    const info = document.getElementById('videoInfo');
+    info.style.display = '';
+    info.textContent = '선택한 영상: ' + videoFile.split('/').pop() + ' (자막은 실제 음성을 받아써서 만듭니다)';
+    setStep('st-plan');
+    sync();
+  });
 
   document.getElementById('settingsBtn').addEventListener('click', () => {
     settingsPanel.style.display = settingsPanel.style.display === 'none' ? '' : 'none';
@@ -168,9 +197,10 @@
   });
 
   window.agent.onProgress(({stage, cur, total}) => {
-    const map = {voice: 'st-voice', render: 'st-render', merge: 'st-merge', captions: 'st-captions'};
+    const map = {voice: 'st-voice', render: 'st-render', merge: 'st-merge', captions: 'st-captions', transcribe: 'st-voice'};
     setStep(map[stage]);
-    statusEl.textContent = {voice: '음성을 만드는 중', render: '장면을 렌더링하는 중', merge: '장면을 합치는 중', captions: '자막을 입히는 중'}[stage] + ` (${cur}/${total})`;
+    const label = {voice: '음성을 만드는 중', render: '장면을 렌더링하는 중', merge: '장면을 합치는 중', captions: '자막을 입히는 중', transcribe: '위스퍼가 음성을 받아쓰는 중 (영상 길이에 따라 몇 분 걸릴 수 있습니다)'}[stage];
+    statusEl.textContent = label + (stage === 'transcribe' ? '' : ` (${cur}/${total})`);
   });
 
   buildBtn.addEventListener('click', async () => {
@@ -178,9 +208,28 @@
     openBtn.style.display = 'none';
     statusEl.className = '';
     try {
+      const captionStyle = document.getElementById('captionStyleSelect').value;
+      if (videoFile) {
+        const result = await window.agent.buildVideo({
+          video: videoFile,
+          captionStyle,
+          aspect: document.getElementById('aspectSelect').value,
+          title: document.getElementById('titleInput').value.trim(),
+        });
+        lastOutput = result.outputPath;
+        statusEl.className = 'done';
+        statusEl.textContent = `완성했습니다. ${Math.round(result.totalDuration)}초 영상, 자막 ${result.segmentCount}줄: ${result.outputPath} (자막 파일: ${result.srtPath})`;
+        openBtn.style.display = '';
+        setStep(null);
+        buildBtn.disabled = false;
+        return;
+      }
       const result = await window.agent.build({
         scenes: scenes.map((s) => ({image: s.image, narration: s.narration.trim()})),
         keywords: scenes.map((s) => (s.keyword || '').trim()),
+        captionStyle,
+        aspect: document.getElementById('aspectSelect').value,
+        title: document.getElementById('titleInput').value.trim(),
       });
       lastOutput = result.outputPath;
       statusEl.className = 'done';

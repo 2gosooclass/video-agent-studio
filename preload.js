@@ -2,7 +2,9 @@ const {contextBridge, ipcRenderer} = require('electron');
 
 contextBridge.exposeInMainWorld('agent', {
   pickImages: () => ipcRenderer.invoke('pick-images'),
+  pickVideos: () => ipcRenderer.invoke('pick-videos'),
   build: (payload) => ipcRenderer.invoke('build', payload),
+  buildVideo: (payload) => ipcRenderer.invoke('build-video', payload),
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (s) => ipcRenderer.invoke('save-settings', s),
   analyze: (payload) => ipcRenderer.invoke('analyze', payload),

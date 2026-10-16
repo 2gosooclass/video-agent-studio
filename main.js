@@ -2,7 +2,7 @@ const {app, BrowserWindow, ipcMain, dialog, shell} = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const {buildProject} = require('./engine');
+const {buildProject, buildVideoProject} = require('./engine');
 const {analyzeScenes} = require('./analysis');
 
 function settingsPath() {
@@ -67,6 +67,9 @@ app.whenReady().then(() => {
       {
         scenes: payload.scenes,
         keywords: payload.keywords || [],
+        captionStyle: payload.captionStyle || 'dohyeon',
+        aspect: payload.aspect || '9:16',
+        title: payload.title || '',
         workDir,
         outputPath,
         fontsDir,
@@ -74,6 +77,56 @@ app.whenReady().then(() => {
           apiKey: settings.apiKey || '',
           ttsModel: settings.ttsModel || 'gemini-2.5-flash-preview-tts',
           voice: settings.voice || 'Kore',
+        },
+      },
+      (stage, cur, total) => event.sender.send('progress', {stage, cur, total})
+    );
+    return result;
+  });
+
+  ipcMain.handle('pick-videos', async () => {
+    const r = await dialog.showOpenDialog(win, {
+      properties: ['openFile'],
+      filters: [{name: 'Videos', extensions: ['mp4', 'mov', 'm4v', 'webm', 'mkv']}],
+    });
+    return r.canceled ? [] : r.filePaths;
+  });
+
+  ipcMain.handle('build-video', async (event, payload) => {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-agent-'));
+    let baseDir;
+    try {
+      baseDir = app.getPath('movies');
+    } catch (e) {
+      try {
+        baseDir = app.getPath('documents');
+      } catch (e2) {
+        baseDir = app.getPath('home');
+      }
+    }
+    const outDir = path.join(baseDir, 'VideoAgent');
+    fs.mkdirSync(outDir, {recursive: true});
+    const outputPath = path.join(outDir, `video-${stamp}.mp4`);
+    const fontsDir = app.isPackaged
+      ? path.join(process.resourcesPath, 'fonts')
+      : path.join(__dirname, 'assets', 'fonts');
+    const whisperDir = app.isPackaged
+      ? path.join(process.resourcesPath, 'whisper')
+      : path.join(__dirname, 'assets', 'whisper');
+    const result = await buildVideoProject(
+      {
+        videoPath: payload.video,
+        captionStyle: payload.captionStyle || 'dohyeon',
+        aspect: payload.aspect || '9:16',
+        title: payload.title || '',
+        workDir,
+        outputPath,
+        fontsDir,
+        whisper: {
+          bin: path.join(whisperDir, process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli'),
+          model: path.join(whisperDir, 'ggml-small.bin'),
+          language: 'ko',
         },
       },
       (stage, cur, total) => event.sender.send('progress', {stage, cur, total})
