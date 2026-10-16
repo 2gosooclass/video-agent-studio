@@ -41,12 +41,23 @@
 <main>
   <div class="toolbar">
     <button id="addBtn">이미지 추가</button>
+    <button id="autoBtn" disabled>자동 대본 만들기</button>
+    <button id="settingsBtn">설정</button>
     <div class="steps">
       <span class="step" id="st-plan">1 계획</span>
       <span class="step" id="st-voice">2 음성</span>
       <span class="step" id="st-render">3 장면</span>
       <span class="step" id="st-merge">4 합성</span>
       <span class="step" id="st-captions">5 자막</span>
+    </div>
+  </div>
+  <div id="settingsPanel" style="display:none; background:#1e1f25; border:1px solid #26272e; border-radius:12px; padding:16px;">
+    <div style="font-weight:800; margin-bottom:8px;">자동 대본 설정</div>
+    <div style="font-size:12.5px; color:#9a9ca6; margin-bottom:10px;">Google AI Studio(aistudio.google.com)에서 발급한 Gemini API 키를 한 번만 넣어 두면, 이미지를 분석해 대본을 자동으로 써 줍니다. 키는 이 컴퓨터에만 저장됩니다.</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <input id="apiKeyInput" type="password" placeholder="Gemini API 키" style="flex:1; min-width:280px; background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:9px 11px; font:inherit; font-size:13px;">
+      <input id="modelInput" placeholder="모델" value="gemini-2.5-flash" style="width:180px; background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:9px 11px; font:inherit; font-size:13px;">
+      <button id="saveSettingsBtn">저장</button>
     </div>
   </div>
   <div id="scenes"><div class="empty">아직 장면이 없습니다. 이미지를 추가해 주세요.</div></div>
@@ -93,10 +104,52 @@
     sync();
   }
 
+  const autoBtn = document.getElementById('autoBtn');
+  const settingsPanel = document.getElementById('settingsPanel');
+
   function sync() {
     buildBtn.disabled = !(scenes.length && scenes.every((s) => (s.narration || '').trim()));
-    if (scenes.length) statusEl.textContent = buildBtn.disabled ? '모든 장면에 나레이션을 적어 주세요.' : '준비됐습니다. 영상 만들기를 누르세요.';
+    autoBtn.disabled = !scenes.length;
+    if (scenes.length) statusEl.textContent = buildBtn.disabled ? '자동 대본 만들기를 누르거나, 장면마다 나레이션을 직접 적어 주세요.' : '준비됐습니다. 영상 만들기를 누르세요.';
   }
+
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    settingsPanel.style.display = settingsPanel.style.display === 'none' ? '' : 'none';
+  });
+
+  document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+    await window.agent.saveSettings({
+      apiKey: document.getElementById('apiKeyInput').value.trim(),
+      model: document.getElementById('modelInput').value.trim() || 'gemini-2.5-flash',
+    });
+    statusEl.textContent = '설정을 저장했습니다.';
+    settingsPanel.style.display = 'none';
+  });
+
+  window.agent.getSettings().then((s) => {
+    if (s.apiKey) document.getElementById('apiKeyInput').value = s.apiKey;
+    if (s.model) document.getElementById('modelInput').value = s.model;
+  });
+
+  autoBtn.addEventListener('click', async () => {
+    autoBtn.disabled = true;
+    setStep('st-plan');
+    statusEl.textContent = '이미지를 분석해 대본을 쓰는 중입니다.';
+    try {
+      const drafts = await window.agent.analyze({scenes: scenes.map((s) => ({image: s.image}))});
+      drafts.forEach((d, i) => {
+        if (scenes[i]) {
+          scenes[i].narration = d.narration || '';
+          scenes[i].keyword = d.keyword || '';
+        }
+      });
+      render();
+      statusEl.textContent = '대본 초안을 채웠습니다. 내용을 확인하고 영상 만들기를 누르세요.';
+    } catch (e) {
+      statusEl.textContent = '자동 대본 오류: ' + e.message;
+    }
+    autoBtn.disabled = false;
+  });
 
   document.getElementById('addBtn').addEventListener('click', async () => {
     const files = await window.agent.pickImages();

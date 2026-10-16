@@ -3,6 +3,19 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const {buildProject} = require('./engine');
+const {analyzeScenes} = require('./analysis');
+
+function settingsPath() {
+  return path.join(app.getPath('userData'), 'settings.json');
+}
+
+function loadSettings() {
+  try {
+    return JSON.parse(fs.readFileSync(settingsPath(), 'utf8'));
+  } catch (e) {
+    return {apiKey: '', model: 'gemini-2.5-flash'};
+  }
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -41,6 +54,25 @@ app.whenReady().then(() => {
       (stage, cur, total) => event.sender.send('progress', {stage, cur, total})
     );
     return result;
+  });
+
+  ipcMain.handle('get-settings', async () => loadSettings());
+
+  ipcMain.handle('save-settings', async (event, settings) => {
+    fs.mkdirSync(path.dirname(settingsPath()), {recursive: true});
+    fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2));
+    return true;
+  });
+
+  ipcMain.handle('analyze', async (event, payload) => {
+    const settings = loadSettings();
+    if (!settings.apiKey) throw new Error('먼저 설정에서 AI API 키를 입력해 주세요.');
+    const drafts = await analyzeScenes({
+      apiKey: settings.apiKey,
+      model: settings.model || 'gemini-2.5-flash',
+      scenes: payload.scenes,
+    });
+    return drafts;
   });
 
   ipcMain.handle('open-file', async (event, filePath) => {

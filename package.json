@@ -6,6 +6,7 @@
       "preload.js",
       "engine.js",
       "tts.js",
+      "analysis.js",
       "renderer/**",
       "node_modules/**"
     ],
@@ -43,5 +44,5 @@
     "engine-test": "node engine-test.js",
     "start": "electron ."
   },
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
