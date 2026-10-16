@@ -4,6 +4,7 @@ test-work/
 test-work2/
 test-work3/
 test-output*.mp4
+test-video-out.*
 *-chk.jpg
 *.log
 .DS_Store
