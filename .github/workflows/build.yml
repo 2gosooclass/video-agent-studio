@@ -27,7 +27,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           git clone --depth 1 --branch v1.8.2 https://github.com/ggerganov/whisper.cpp /tmp/whisper.cpp
-          cmake -S /tmp/whisper.cpp -B /tmp/whisper.cpp/build -DCMAKE_BUILD_TYPE=Release
+          cmake -S /tmp/whisper.cpp -B /tmp/whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DWHISPER_BUILD_TESTS=OFF
           cmake --build /tmp/whisper.cpp/build -j 4 --target whisper-cli
           cp /tmp/whisper.cpp/build/bin/whisper-cli assets/whisper/whisper-cli
           chmod +x assets/whisper/whisper-cli
@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           git clone --depth 1 --branch v1.8.2 https://github.com/ggerganov/whisper.cpp /tmp/whisper.cpp
-          cmake -S /tmp/whisper.cpp -B /tmp/whisper.cpp/build -DCMAKE_BUILD_TYPE=Release
+          cmake -S /tmp/whisper.cpp -B /tmp/whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DWHISPER_BUILD_TESTS=OFF
           cmake --build /tmp/whisper.cpp/build -j 4 --config Release --target whisper-cli
           cp /tmp/whisper.cpp/build/bin/Release/whisper-cli.exe assets/whisper/whisper-cli.exe
           cp /tmp/whisper.cpp/build/bin/Release/*.dll assets/whisper/ || true

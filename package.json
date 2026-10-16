@@ -60,5 +60,5 @@
     "engine-test": "node engine-test.js",
     "start": "electron ."
   },
-  "version": "0.7.0"
+  "version": "0.7.1"
 }

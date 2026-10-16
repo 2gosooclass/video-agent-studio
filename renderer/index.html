@@ -44,9 +44,7 @@
     <button id="videoBtn">영상 추가 (자막 자동)</button>
     <button id="textBtn">텍스트로 만들기</button>
     <button id="pdfBtn">슬라이드(PDF) 추가</button>
-    <button id="bgmBtn">배경음악 선택</button>
     <button id="recBtn">녹화하기</button>
-    <span id="bgmName" style="font-size:12.5px; color:#9a9ca6;"></span>
     <button id="autoBtn" disabled>자동 대본 만들기</button>
     <button id="settingsBtn">설정</button>
     <div class="steps">
@@ -161,14 +159,6 @@
   const settingsPanel = document.getElementById('settingsPanel');
 
   let videoFile = null;
-  let bgmFile = null;
-
-  document.getElementById('bgmBtn').addEventListener('click', async () => {
-    const files = await window.agent.pickAudio();
-    if (!files.length) return;
-    bgmFile = files[0];
-    document.getElementById('bgmName').textContent = '음악: ' + bgmFile.split('/').pop();
-  });
 
   function sync() {
     buildBtn.disabled = !(videoFile || (scenes.length && scenes.every((s) => (s.narration || '').trim())));
@@ -293,7 +283,6 @@
         captionStyle,
         aspect: document.getElementById('aspectSelect').value,
         title: document.getElementById('titleInput').value.trim(),
-        bgm: bgmFile,
       });
       lastOutput = result.outputPath;
       statusEl.className = 'done';
