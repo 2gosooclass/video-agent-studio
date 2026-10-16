@@ -17,13 +17,6 @@ function loadSettings() {
   }
 }
 
-function setupPermissions() {
-  const {session} = require('electron');
-  session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
-    callback(permission === 'media');
-  });
-}
-
 function createWindow() {
   const win = new BrowserWindow({
     width: 1180,
@@ -40,7 +33,6 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  setupPermissions();
   const win = createWindow();
 
   ipcMain.handle('pick-images', async () => {
@@ -143,20 +135,6 @@ app.whenReady().then(() => {
       (stage, cur, total) => event.sender.send('progress', {stage, cur, total})
     );
     return result;
-  });
-
-  ipcMain.handle('save-recording', async (event, {base64, kind}) => {
-    const dir = path.join(os.tmpdir(), 'video-agent-recordings');
-    fs.mkdirSync(dir, {recursive: true});
-    const file = path.join(dir, `rec-${Date.now()}.webm`);
-    fs.writeFileSync(file, Buffer.from(base64, 'base64'));
-    if (kind === 'video') return file;
-    // 마이크만 녹음한 경우: 단색 배경 영상으로 바꿔 영상 모드로 처리한다
-    const out = file.replace(/\.webm$/, '.mp4');
-    await new Promise((resolve, reject) => {
-      execFile(ffmpegPath, ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=0x0B1026:s=1080x1920', '-i', file, '-shortest', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', out], (err) => (err ? reject(err) : resolve()));
-    });
-    return out;
   });
 
   ipcMain.handle('pick-audio', async () => {

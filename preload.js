@@ -5,7 +5,6 @@ contextBridge.exposeInMainWorld('agent', {
   pickVideos: () => ipcRenderer.invoke('pick-videos'),
   pickPdf: () => ipcRenderer.invoke('pick-pdf'),
   pickAudio: () => ipcRenderer.invoke('pick-audio'),
-  saveRecording: (payload) => ipcRenderer.invoke('save-recording', payload),
   saveSlide: (payload) => ipcRenderer.invoke('save-slide', payload),
   build: (payload) => ipcRenderer.invoke('build', payload),
   buildVideo: (payload) => ipcRenderer.invoke('build-video', payload),

@@ -26,11 +26,7 @@
     },
     "mac": {
       "category": "public.app-category.video",
-      "target": "dmg",
-      "extendInfo": {
-        "NSCameraUsageDescription": "영상 녹화를 위해 카메라를 사용합니다.",
-        "NSMicrophoneUsageDescription": "영상 녹화와 나레이션을 위해 마이크를 사용합니다."
-      }
+      "target": "dmg"
     },
     "nsis": {
       "allowToChangeInstallationDirectory": true,

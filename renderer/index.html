@@ -44,7 +44,6 @@
     <button id="videoBtn">영상 추가 (자막 자동)</button>
     <button id="textBtn">텍스트로 만들기</button>
     <button id="pdfBtn">슬라이드(PDF) 추가</button>
-    <button id="recBtn">녹화하기</button>
     <button id="autoBtn" disabled>자동 대본 만들기</button>
     <button id="settingsBtn">설정</button>
     <div class="steps">
@@ -70,16 +69,6 @@
       </select>
       <button id="saveSettingsBtn">저장</button>
     </div>
-  </div>
-  <div id="recPanel" style="display:none; background:#1e1f25; border:1px solid #26272e; border-radius:12px; padding:16px;">
-    <div style="font-weight:800; margin-bottom:10px;">녹화</div>
-    <video id="recPreview" autoplay muted playsinline style="width:220px; border-radius:10px; background:#000; display:none;"></video>
-    <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-      <button id="recCamBtn">카메라와 마이크</button>
-      <button id="recMicBtn">마이크만</button>
-      <button id="recStopBtn" disabled>녹화 종료</button>
-    </div>
-    <div id="recHint" style="font-size:12.5px; color:#9a9ca6; margin-top:8px;">녹화가 끝나면 영상 모드로 들어가고, 영상 만들기를 누르면 자막이 자동으로 달립니다.</div>
   </div>
   <div id="textPanel" style="display:none; background:#1e1f25; border:1px solid #26272e; border-radius:12px; padding:16px;">
     <div style="font-weight:800; margin-bottom:8px;">대본 붙여넣기</div>
@@ -296,61 +285,6 @@
   });
 
   openBtn.addEventListener('click', () => { if (lastOutput) window.agent.openFile(lastOutput); });
-
-  let mediaRecorder = null;
-  let recChunks = [];
-  let recStream = null;
-  let recKind = 'video';
-
-  document.getElementById('recBtn').addEventListener('click', () => {
-    const p = document.getElementById('recPanel');
-    p.style.display = p.style.display === 'none' ? '' : 'none';
-  });
-
-  async function startRecording(kind) {
-    try {
-      recKind = kind;
-      recStream = await navigator.mediaDevices.getUserMedia(
-        kind === 'video' ? {video: true, audio: true} : {audio: true}
-      );
-      const preview = document.getElementById('recPreview');
-      if (kind === 'video') {
-        preview.srcObject = recStream;
-        preview.style.display = '';
-      } else {
-        preview.style.display = 'none';
-      }
-      recChunks = [];
-      mediaRecorder = new MediaRecorder(recStream);
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size) recChunks.push(e.data); };
-      mediaRecorder.onstop = async () => {
-        recStream.getTracks().forEach((t) => t.stop());
-        document.getElementById('recStopBtn').disabled = true;
-        const blob = new Blob(recChunks, {type: 'video/webm'});
-        const buf = new Uint8Array(await blob.arrayBuffer());
-        let bin = '';
-        for (let j = 0; j < buf.length; j += 32768) bin += String.fromCharCode.apply(null, buf.subarray(j, j + 32768));
-        statusEl.textContent = '녹화를 저장하는 중입니다.';
-        const saved = await window.agent.saveRecording({base64: btoa(bin), kind: recKind});
-        videoFile = saved;
-        scenes.length = 0;
-        videoInfo.textContent = '녹화 영상: ' + saved.split('/').pop();
-        document.getElementById('recPanel').style.display = 'none';
-        render();
-        setStep('st-make');
-        statusEl.textContent = '녹화가 끝났습니다. 영상 만들기를 누르면 자막이 자동으로 달립니다.';
-      };
-      mediaRecorder.start(500);
-      document.getElementById('recStopBtn').disabled = false;
-      statusEl.textContent = '녹화 중입니다. 끝나면 녹화 종료를 누르세요.';
-    } catch (e) {
-      statusEl.textContent = '녹화 오류: ' + e.message;
-    }
-  }
-
-  document.getElementById('recCamBtn').addEventListener('click', () => startRecording('video'));
-  document.getElementById('recMicBtn').addEventListener('click', () => startRecording('audio'));
-  document.getElementById('recStopBtn').addEventListener('click', () => { if (mediaRecorder) mediaRecorder.stop(); });
 
   window.addEventListener('slides-ready', (e) => {
     e.detail.forEach((s) => scenes.push({image: s.image, narration: s.narration || '', keyword: ''}));
