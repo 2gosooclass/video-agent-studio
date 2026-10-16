@@ -46,7 +46,17 @@ app.whenReady().then(() => {
   ipcMain.handle('build', async (event, payload) => {
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-agent-'));
-    const outDir = path.join(app.getPath('movies'), 'VideoAgent');
+    let baseDir;
+    try {
+      baseDir = app.getPath('movies');
+    } catch (e) {
+      try {
+        baseDir = app.getPath('documents');
+      } catch (e2) {
+        baseDir = app.getPath('home');
+      }
+    }
+    const outDir = path.join(baseDir, 'VideoAgent');
     fs.mkdirSync(outDir, {recursive: true});
     const outputPath = path.join(outDir, `video-${stamp}.mp4`);
     const result = await buildProject(
