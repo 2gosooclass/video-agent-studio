@@ -58,7 +58,8 @@ async function buildProject(project, onProgress) {
   const preset = CAPTION_PRESETS[captionStyle] || CAPTION_PRESETS.dohyeon;
   const [VW, VH] = ASPECTS[aspect] || ASPECTS['9:16'];
   const capSize = aspect === '9:16' ? preset.size : Math.round(preset.size * 0.72);
-  const capMarginV = Math.max(56, Math.round(VH * 0.09));
+  const safe = safeMargins(VW, VH);
+  const capMarginV = safe.captionMarginV;
   fs.mkdirSync(workDir, {recursive: true});
   const audioDir = path.join(workDir, 'audio');
   const segDir = path.join(workDir, 'segments');
@@ -69,8 +70,15 @@ async function buildProject(project, onProgress) {
   const segFiles = [];
   let t = 0;
 
+  const BG_PALETTES = ['0x0B1026', '0x101E1A', '0x1E0F16', '0x0E1A2E'];
   for (let i = 0; i < scenes.length; i++) {
     const n = i + 1;
+    if (typeof scenes[i].image === 'string' && scenes[i].image.startsWith('bg:')) {
+      // 텍스트 모드: 장면 배경을 단색 그라데이션으로 생성한다
+      const bgPath = path.join(segDir, `bg${n}.png`);
+      await run(ffmpegPath, ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', `color=c=${BG_PALETTES[i % BG_PALETTES.length]}:s=${VW}x${VH}`, '-vf', 'vignette=PI/5', '-frames:v', '1', bgPath]);
+      scenes[i] = {...scenes[i], image: bgPath};
+    }
     onProgress && onProgress('voice', n, scenes.length);
     const audioPath = path.join(audioDir, `nar${n}.mp3`);
     let made = null;
@@ -116,7 +124,7 @@ async function buildProject(project, onProgress) {
   lines.push('[V4+ Styles]');
   lines.push('Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding');
   lines.push(`Style: Main,${preset.font},${capSize},&HFFFFFF,&HFFFFFF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,${preset.outline},2,2,60,60,${capMarginV},1`);
-  lines.push('Style: Title,Black Han Sans,96,&H003CC9FF,&H003CC9FF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,8,2,8,60,60,110,1');
+  lines.push(`Style: Title,Black Han Sans,96,&H003CC9FF,&H003CC9FF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,8,2,8,60,60,${safe.titleMarginV},1`);
   lines.push('', '[Events]', 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text');
   if (title) {
     const firstDur = starts.length ? starts[0][0] + starts[0][1] : 3;
@@ -160,6 +168,18 @@ async function buildProject(project, onProgress) {
     await run(ffmpegPath, burnArgs);
   }
   return {outputPath, totalDuration: await duration(outputPath)};
+}
+
+// 안전 존: 세로 영상은 피드에서 4:5로 잘려 보이므로 자막과 제목을 그 안에 둔다
+function safeMargins(W, H) {
+  if (H > W) {
+    const zH = Math.round((W * 5) / 4);
+    if (zH < H) {
+      const zTop = Math.round((H - zH) / 2);
+      return {captionMarginV: H - (zTop + zH) + 12, titleMarginV: zTop + 16};
+    }
+  }
+  return {captionMarginV: Math.max(56, Math.round(H * 0.09)), titleMarginV: 110};
 }
 
 const {transcribe} = require('./whisper');
@@ -218,9 +238,10 @@ async function buildVideoProject(project, onProgress) {
   lines.push('[Script Info]', 'ScriptType: v4.00+', `PlayResX: ${W}`, `PlayResY: ${H}`, '');
   lines.push('[V4+ Styles]');
   lines.push('Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding');
-  const marginV = Math.max(56, Math.round(H * 0.08));
+  const vsafe = safeMargins(W, H);
+  const marginV = vsafe.captionMarginV;
   lines.push(`Style: Main,${preset.font},${preset.size},&HFFFFFF,&HFFFFFF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,${preset.outline},2,2,60,60,${marginV},1`);
-  lines.push('Style: Title,Black Han Sans,96,&H003CC9FF,&H003CC9FF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,8,2,8,60,60,110,1');
+  lines.push(`Style: Title,Black Han Sans,96,&H003CC9FF,&H003CC9FF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,8,2,8,60,60,${vsafe.titleMarginV},1`);
   lines.push('', '[Events]', 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text');
   if (title) {
     lines.push(`Dialogue: 1,${assTime(0)},${assTime(3.2)},Title,,0,0,0,,${title}`);

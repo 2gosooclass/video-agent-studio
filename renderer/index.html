@@ -42,6 +42,7 @@
   <div class="toolbar">
     <button id="addBtn">이미지 추가</button>
     <button id="videoBtn">영상 추가 (자막 자동)</button>
+    <button id="textBtn">텍스트로 만들기</button>
     <button id="autoBtn" disabled>자동 대본 만들기</button>
     <button id="settingsBtn">설정</button>
     <div class="steps">
@@ -67,6 +68,11 @@
       </select>
       <button id="saveSettingsBtn">저장</button>
     </div>
+  </div>
+  <div id="textPanel" style="display:none; background:#1e1f25; border:1px solid #26272e; border-radius:12px; padding:16px;">
+    <div style="font-weight:800; margin-bottom:8px;">대본 붙여넣기</div>
+    <textarea id="scriptText" rows="6" placeholder="영상 대본 전체를 붙여넣으세요. 문장 단위로 장면이 나뉘고, 배경과 음성과 자막은 자동으로 만들어집니다." style="width:100%; background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:10px 12px; font:inherit; font-size:14px; resize:vertical;"></textarea>
+    <button id="splitBtn" style="margin-top:10px;">장면으로 나누기</button>
   </div>
   <input id="titleInput" placeholder="제목 (선택 사항, 처음 3초 동안 크게 표시됩니다)" style="background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:10px 12px; font:inherit; font-size:14px;">
   <div id="videoInfo" style="display:none; background:#1e1f25; border:1px solid #26272e; border-radius:12px; padding:14px 16px; font-size:13.5px;"></div>
@@ -111,7 +117,9 @@
       const div = document.createElement('div');
       div.className = 'scene';
       div.innerHTML = `
-        <img src="file://${scene.image.replace(/\\/g, '/')}">
+        ${scene.image.startsWith('bg:')
+          ? `<div style="width:74px; height:132px; border-radius:8px; background:linear-gradient(160deg,#1b2a4a,#0b1026); display:flex; align-items:center; justify-content:center; color:#9fb0d0; font-weight:800; flex-shrink:0;">${idx + 1}</div>`
+          : `<img src="file://${scene.image.replace(/\\/g, '/')}">`}
         <div class="body">
           <div class="num">장면 ${i + 1}</div>
           <textarea data-i="${i}" placeholder="이 장면의 나레이션을 적어 주세요">${scene.narration || ''}</textarea>
@@ -187,6 +195,28 @@
       statusEl.textContent = '자동 대본 오류: ' + e.message;
     }
     autoBtn.disabled = false;
+  });
+
+  document.getElementById('textBtn').addEventListener('click', () => {
+    const p = document.getElementById('textPanel');
+    p.style.display = p.style.display === 'none' ? '' : 'none';
+  });
+
+  document.getElementById('splitBtn').addEventListener('click', () => {
+    const raw = document.getElementById('scriptText').value.trim();
+    if (!raw) return;
+    let chunks = raw.split(/\n+/).flatMap((line) => line.match(/[^.!?…]+[.!?…]?/g) || []).map((s) => s.trim()).filter(Boolean);
+    const merged = [];
+    for (const c of chunks) {
+      if (merged.length && (merged[merged.length - 1].length < 12 || c.length < 8)) merged[merged.length - 1] += ' ' + c;
+      else merged.push(c);
+    }
+    chunks = merged.length ? merged : chunks;
+    chunks.forEach((c, i) => scenes.push({image: 'bg:' + i, narration: c, keyword: ''}));
+    document.getElementById('textPanel').style.display = 'none';
+    render();
+    setStep('st-plan');
+    statusEl.textContent = `대본을 ${chunks.length}개 장면으로 나눴습니다. 영상 만들기를 누르세요.`;
   });
 
   document.getElementById('addBtn').addEventListener('click', async () => {
