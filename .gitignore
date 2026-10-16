@@ -1,7 +1,9 @@
 node_modules/
 dist/
 test-work/
-test-output.mp4
-test-chk.jpg
+test-work2/
+test-work3/
+test-output*.mp4
+*-chk.jpg
 *.log
 .DS_Store

@@ -1,5 +1,0 @@
-file '/home/hatch/workspace/video-agent-app/test-work3/segments/seg1.mp4'
-file '/home/hatch/workspace/video-agent-app/test-work3/segments/seg2.mp4'
-file '/home/hatch/workspace/video-agent-app/test-work3/segments/seg3.mp4'
-file '/home/hatch/workspace/video-agent-app/test-work3/segments/seg4.mp4'
-file '/home/hatch/workspace/video-agent-app/test-work3/segments/seg5.mp4'

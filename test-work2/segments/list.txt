@@ -1,5 +1,0 @@
-file 'test-work2/segments/seg1.mp4'
-file 'test-work2/segments/seg2.mp4'
-file 'test-work2/segments/seg3.mp4'
-file 'test-work2/segments/seg4.mp4'
-file 'test-work2/segments/seg5.mp4'
