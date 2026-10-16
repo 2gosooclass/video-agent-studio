@@ -292,9 +292,33 @@ function remapSegments(segments, keeps) {
   return out;
 }
 
+// 숏폼 구간 선택: 목표 길이에 맞는 구간 중 말 밀도가 높고
+// 첫 문장에 질문이나 숫자가 있으면 가산점을 줘 가장 강한 구간을 고른다
+function pickShortWindow(segments, target) {
+  let best = null;
+  for (let i = 0; i < segments.length; i++) {
+    let j = i;
+    let chars = 0;
+    while (j < segments.length && segments[j].end - segments[i].start <= target) {
+      chars += segments[j].text.length;
+      j++;
+    }
+    if (j === i) continue;
+    const dur = segments[j - 1].end - segments[i].start;
+    if (dur < target * 0.5) continue;
+    let score = chars / Math.max(dur, 1);
+    const head = segments.slice(i, Math.min(i + 2, j)).map((s) => s.text).join(' ');
+    if (/[?？]/.test(head)) score *= 1.25;
+    if (/\d/.test(head)) score *= 1.2;
+    if (!best || score > best.score) best = {score, start: segments[i].start, end: segments[j - 1].end};
+  }
+  if (!best) return {start: Math.max(0, segments[0].start - 0.1), end: segments[0].end + 0.1};
+  return {start: Math.max(0, best.start - 0.1), end: best.end + 0.1};
+}
+
 // 영상 모드: 원본 영상에 위스퍼 자막을 입히고 SRT를 함께 만든다.
 async function buildVideoProject(project, onProgress) {
-  const {videoPath, workDir, outputPath, fontsDir = null, captionStyle = 'dohyeon', aspect = '9:16', whisper, title = '', trimSilence = false} = project;
+  const {videoPath, workDir, outputPath, fontsDir = null, captionStyle = 'dohyeon', aspect = '9:16', whisper, title = '', trimSilence = false, shortForm = 0} = project;
   const [W, H] = ASPECTS[aspect] || ASPECTS['9:16'];
   const preset = CAPTION_PRESETS[captionStyle] || CAPTION_PRESETS.dohyeon;
   fs.mkdirSync(workDir, {recursive: true});
@@ -310,13 +334,20 @@ async function buildVideoProject(project, onProgress) {
   });
   if (!segments.length) throw new Error('음성에서 자막을 만들 문장을 찾지 못했습니다.');
 
-  // 무음 구간 자동 컷: 말이 없는 긴 공백을 잘라내고 자막 시간을 새 타임라인에 맞춘다
+  // 구간 컷: 숏폼이면 가장 강한 구간 하나를, 무음 컷이면 말이 있는 구간만 남긴다
   let burnVideo = videoPath;
-  if (trimSilence) {
+  let finalKeeps = null;
+  if (shortForm > 0) {
+    finalKeeps = [pickShortWindow(segments, shortForm)];
+  } else if (trimSilence) {
     const totalDur = await duration(videoPath);
     const keeps = await detectKeeps(path.join(workDir, 'audio16k.wav'), totalDur);
     const keptDur = keeps.reduce((a, k) => a + (k.end - k.start), 0);
-    if (keeps.length && keeps.length <= 300 && keptDur < totalDur * 0.97) {
+    if (keeps.length && keeps.length <= 300 && keptDur < totalDur * 0.97) finalKeeps = keeps;
+  }
+  if (finalKeeps) {
+    const keeps = finalKeeps;
+    {
       segments = remapSegments(segments, keeps);
       const cutPath = path.join(workDir, 'cut.mp4');
       const partFiles = [];

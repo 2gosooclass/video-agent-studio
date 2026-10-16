@@ -96,6 +96,12 @@
   <label style="font-size:13px; color:#c9cad1; display:flex; align-items:center; gap:6px;">
     <input type="checkbox" id="trimSilenceChk"> 영상 무음 구간 자동 컷
   </label>
+  <select id="shortFormSelect" title="숏폼 자동 절단" style="background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:9px 11px; font:inherit; font-size:13px;">
+    <option value="0">숏폼 안 함</option>
+    <option value="15">숏폼 15초</option>
+    <option value="30">숏폼 30초</option>
+    <option value="60">숏폼 60초</option>
+  </select>
   <select id="aspectSelect" title="화면 비율" style="background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:9px 11px; font:inherit; font-size:13px;">
     <option value="9:16">비율 9:16 세로</option>
     <option value="16:9">비율 16:9 가로</option>
@@ -271,6 +277,7 @@
           aspect: document.getElementById('aspectSelect').value,
           title: document.getElementById('titleInput').value.trim(),
           trimSilence: document.getElementById('trimSilenceChk').checked,
+          shortForm: Number(document.getElementById('shortFormSelect').value),
         });
         lastOutput = result.outputPath;
         statusEl.className = 'done';

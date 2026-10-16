@@ -130,6 +130,7 @@ app.whenReady().then(() => {
         aspect: payload.aspect || '9:16',
         title: payload.title || '',
         trimSilence: !!payload.trimSilence,
+        shortForm: Number(payload.shortForm) || 0,
         workDir,
         outputPath,
         fontsDir,
