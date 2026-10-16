@@ -134,6 +134,23 @@ app.whenReady().then(() => {
     return result;
   });
 
+  ipcMain.handle('pick-pdf', async () => {
+    const r = await dialog.showOpenDialog(win, {
+      properties: ['openFile'],
+      filters: [{name: 'PDF', extensions: ['pdf']}],
+    });
+    if (r.canceled || !r.filePaths.length) return null;
+    return {path: r.filePaths[0], data: fs.readFileSync(r.filePaths[0]).toString('base64')};
+  });
+
+  ipcMain.handle('save-slide', async (event, {index, base64, text}) => {
+    const dir = path.join(os.tmpdir(), 'video-agent-slides');
+    fs.mkdirSync(dir, {recursive: true});
+    const file = path.join(dir, `slide-${Date.now()}-${index}.png`);
+    fs.writeFileSync(file, Buffer.from(base64, 'base64'));
+    return {image: file, narration: (text || '').slice(0, 300)};
+  });
+
   ipcMain.handle('get-settings', async () => loadSettings());
 
   ipcMain.handle('save-settings', async (event, settings) => {

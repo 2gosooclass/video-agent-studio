@@ -43,6 +43,7 @@
     <button id="addBtn">이미지 추가</button>
     <button id="videoBtn">영상 추가 (자막 자동)</button>
     <button id="textBtn">텍스트로 만들기</button>
+    <button id="pdfBtn">슬라이드(PDF) 추가</button>
     <button id="autoBtn" disabled>자동 대본 만들기</button>
     <button id="settingsBtn">설정</button>
     <div class="steps">
@@ -273,7 +274,52 @@
   });
 
   openBtn.addEventListener('click', () => { if (lastOutput) window.agent.openFile(lastOutput); });
+
+  window.addEventListener('slides-ready', (e) => {
+    e.detail.forEach((s) => scenes.push({image: s.image, narration: s.narration || '', keyword: ''}));
+    render();
+    setStep('st-plan');
+    statusEl.textContent = `슬라이드 ${e.detail.length}장을 장면으로 넣었습니다. 나레이션을 확인하고 영상 만들기를 누르세요.`;
+  });
+
   render();
+</script>
+<script type="module">
+  import * as pdfjsLib from '../node_modules/pdfjs-dist/build/pdf.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '../node_modules/pdfjs-dist/build/pdf.worker.mjs';
+  const statusEl = document.getElementById('status');
+  document.getElementById('pdfBtn').addEventListener('click', async () => {
+    const picked = await window.agent.pickPdf();
+    if (!picked) return;
+    statusEl.textContent = '슬라이드를 읽는 중입니다.';
+    try {
+      const bytes = Uint8Array.from(atob(picked.data), (c) => c.charCodeAt(0));
+      const pdf = await pdfjsLib.getDocument({data: bytes}).promise;
+      const out = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const base = page.getViewport({scale: 1});
+        const vp = page.getViewport({scale: 1600 / base.width});
+        const canvas = document.createElement('canvas');
+        canvas.width = vp.width;
+        canvas.height = vp.height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        await page.render({canvasContext: ctx, viewport: vp}).promise;
+        const tc = await page.getTextContent();
+        const text = tc.items.map((it) => it.str).join(' ').replace(/\s+/g, ' ').trim();
+        const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        let bin = '';
+        for (let j = 0; j < buf.length; j += 32768) bin += String.fromCharCode.apply(null, buf.subarray(j, j + 32768));
+        out.push(await window.agent.saveSlide({index: i, base64: btoa(bin), text}));
+      }
+      window.dispatchEvent(new CustomEvent('slides-ready', {detail: out}));
+    } catch (e) {
+      statusEl.textContent = '슬라이드 오류: ' + e.message;
+    }
+  });
 </script>
 </body>
 </html>

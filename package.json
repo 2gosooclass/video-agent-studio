@@ -12,8 +12,14 @@
       "node_modules/**"
     ],
     "extraResources": [
-      {"from": "assets/fonts", "to": "fonts"},
-      {"from": "assets/whisper", "to": "whisper"}
+      {
+        "from": "assets/fonts",
+        "to": "fonts"
+      },
+      {
+        "from": "assets/whisper",
+        "to": "whisper"
+      }
     ],
     "linux": {
       "target": "AppImage"
@@ -33,7 +39,8 @@
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
-    "@ffprobe-installer/ffprobe": "^2.1.2"
+    "@ffprobe-installer/ffprobe": "^2.1.2",
+    "pdfjs-dist": "^4.10.38"
   },
   "description": "이미지나 영상을 넣으면 분석, 대본, 나레이션, 자막, 합성까지 자동으로 만드는 데스크톱 영상 제작 앱",
   "devDependencies": {
