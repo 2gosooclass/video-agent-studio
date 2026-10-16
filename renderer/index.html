@@ -57,6 +57,13 @@
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
       <input id="apiKeyInput" type="password" placeholder="Gemini API 키" style="flex:1; min-width:280px; background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:9px 11px; font:inherit; font-size:13px;">
       <input id="modelInput" placeholder="모델" value="gemini-2.5-flash" style="width:180px; background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:9px 11px; font:inherit; font-size:13px;">
+      <select id="voiceSelect" style="width:160px; background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:9px 11px; font:inherit; font-size:13px;">
+        <option value="Kore">음성 Kore</option>
+        <option value="Aoede">음성 Aoede</option>
+        <option value="Puck">음성 Puck</option>
+        <option value="Charon">음성 Charon</option>
+        <option value="Zephyr">음성 Zephyr</option>
+      </select>
       <button id="saveSettingsBtn">저장</button>
     </div>
   </div>
@@ -121,6 +128,7 @@
     await window.agent.saveSettings({
       apiKey: document.getElementById('apiKeyInput').value.trim(),
       model: document.getElementById('modelInput').value.trim() || 'gemini-2.5-flash',
+      voice: document.getElementById('voiceSelect').value,
     });
     statusEl.textContent = '설정을 저장했습니다.';
     settingsPanel.style.display = 'none';
@@ -129,6 +137,7 @@
   window.agent.getSettings().then((s) => {
     if (s.apiKey) document.getElementById('apiKeyInput').value = s.apiKey;
     if (s.model) document.getElementById('modelInput').value = s.model;
+    if (s.voice) document.getElementById('voiceSelect').value = s.voice;
   });
 
   autoBtn.addEventListener('click', async () => {

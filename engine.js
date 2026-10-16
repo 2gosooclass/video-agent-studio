@@ -45,7 +45,7 @@ function styled(text, keyword) {
 }
 
 async function buildProject(project, onProgress) {
-  const {scenes, workDir, outputPath, keywords = []} = project;
+  const {scenes, workDir, outputPath, keywords = [], tts = {}, fontsDir = null} = project;
   fs.mkdirSync(workDir, {recursive: true});
   const audioDir = path.join(workDir, 'audio');
   const segDir = path.join(workDir, 'segments');
@@ -62,7 +62,7 @@ async function buildProject(project, onProgress) {
     const audioPath = path.join(audioDir, `nar${n}.mp3`);
     let made = null;
     try {
-      made = await synthesize(scenes[i].narration, audioPath, ffmpegPath);
+      made = await synthesize(scenes[i].narration, audioPath, ffmpegPath, tts);
     } catch (e) {
       made = null;
     }
@@ -102,7 +102,7 @@ async function buildProject(project, onProgress) {
   lines.push('[Script Info]', 'ScriptType: v4.00+', 'PlayResX: 1080', 'PlayResY: 1920', '');
   lines.push('[V4+ Styles]');
   lines.push('Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding');
-  lines.push('Style: Main,Pretendard,56,&HFFFFFF,&HFFFFFF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,7,2,2,60,60,240,1');
+  lines.push('Style: Main,Do Hyeon,58,&HFFFFFF,&HFFFFFF,&H000000,&H64000000,-1,0,0,0,100,100,0,0,1,7,2,2,60,60,240,1');
   lines.push('', '[Events]', 'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text');
   scenes.forEach((scene, i) => {
     const [start, nd] = starts[i];
@@ -120,7 +120,27 @@ async function buildProject(project, onProgress) {
   fs.writeFileSync(assPath, lines.join('\n'));
 
   onProgress && onProgress('captions', scenes.length, scenes.length);
-  await run(ffmpegPath, ['-y', '-loglevel', 'error', '-i', joined, '-vf', `ass=${assPath}`, '-c:a', 'copy', outputPath]);
+  const burnArgs = ['-y', '-loglevel', 'error', '-i', joined, '-vf', `ass=${assPath}`, '-c:a', 'copy', outputPath];
+  if (fontsDir && fs.existsSync(fontsDir)) {
+    // 번들 폰트를 libass가 찾도록 fontconfig 경로를 작업 폴더에 만든다
+    const fc = [
+      '<?xml version="1.0"?>',
+      '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">',
+      '<fontconfig>',
+      `<dir>${fontsDir}</dir>`,
+      `<cachedir>${path.join(workDir, 'fc-cache')}</cachedir>`,
+      '</fontconfig>',
+    ].join('\n');
+    fs.writeFileSync(path.join(workDir, 'fonts.conf'), fc);
+    await new Promise((resolve, reject) => {
+      execFile(ffmpegPath, burnArgs, {env: {...process.env, FONTCONFIG_PATH: workDir}, maxBuffer: 1024 * 1024 * 64}, (err, stdout, stderr) => {
+        if (err) reject(new Error((stderr || err.message).slice(-600)));
+        else resolve(stdout);
+      });
+    });
+  } else {
+    await run(ffmpegPath, burnArgs);
+  }
   return {outputPath, totalDuration: await duration(outputPath)};
 }
 

@@ -59,8 +59,23 @@ app.whenReady().then(() => {
     const outDir = path.join(baseDir, 'VideoAgent');
     fs.mkdirSync(outDir, {recursive: true});
     const outputPath = path.join(outDir, `video-${stamp}.mp4`);
+    const settings = loadSettings();
+    const fontsDir = app.isPackaged
+      ? path.join(process.resourcesPath, 'fonts')
+      : path.join(__dirname, 'assets', 'fonts');
     const result = await buildProject(
-      {scenes: payload.scenes, keywords: payload.keywords || [], workDir, outputPath},
+      {
+        scenes: payload.scenes,
+        keywords: payload.keywords || [],
+        workDir,
+        outputPath,
+        fontsDir,
+        tts: {
+          apiKey: settings.apiKey || '',
+          ttsModel: settings.ttsModel || 'gemini-2.5-flash-preview-tts',
+          voice: settings.voice || 'Kore',
+        },
+      },
       (stage, cur, total) => event.sender.send('progress', {stage, cur, total})
     );
     return result;
