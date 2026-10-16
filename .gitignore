@@ -5,3 +5,4 @@ test-output.mp4
 test-chk.jpg
 *.log
 .DS_Store
+.github/
