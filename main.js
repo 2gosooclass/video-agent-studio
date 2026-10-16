@@ -70,6 +70,7 @@ app.whenReady().then(() => {
         captionStyle: payload.captionStyle || 'dohyeon',
         aspect: payload.aspect || '9:16',
         title: payload.title || '',
+        bgm: payload.bgm || null,
         workDir,
         outputPath,
         fontsDir,
@@ -120,6 +121,7 @@ app.whenReady().then(() => {
         captionStyle: payload.captionStyle || 'dohyeon',
         aspect: payload.aspect || '9:16',
         title: payload.title || '',
+        trimSilence: !!payload.trimSilence,
         workDir,
         outputPath,
         fontsDir,
@@ -132,6 +134,14 @@ app.whenReady().then(() => {
       (stage, cur, total) => event.sender.send('progress', {stage, cur, total})
     );
     return result;
+  });
+
+  ipcMain.handle('pick-audio', async () => {
+    const r = await dialog.showOpenDialog(win, {
+      properties: ['openFile'],
+      filters: [{name: 'Audio', extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg']}],
+    });
+    return r.canceled ? [] : r.filePaths;
   });
 
   ipcMain.handle('pick-pdf', async () => {

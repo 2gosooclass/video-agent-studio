@@ -119,6 +119,22 @@ async function buildProject(project, onProgress) {
   const joined = path.join(workDir, 'joined.mp4');
   await run(ffmpegPath, ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', joined]);
 
+  // 배경음악: 나레이션을 사이드체인으로 음악을 자동으로 눌러 준다 (덕킹)
+  let burnSource = joined;
+  if (project.bgm) {
+    onProgress && onProgress('merge', scenes.length, scenes.length);
+    const totalDur = t;
+    const mixed = path.join(workDir, 'mixed.mp4');
+    await run(ffmpegPath, [
+      '-y', '-loglevel', 'error',
+      '-i', joined, '-stream_loop', '-1', '-i', project.bgm,
+      '-filter_complex',
+      `[0:a]asplit=2[sc][mix];[mix]volume=1.5[mixv];[1:a]atrim=0:${totalDur.toFixed(2)},volume=0.35[bgmraw];[sc][bgmraw]sidechaincompress=threshold=0.02:ratio=8:attack=200:release=1000[ducked];[mixv][ducked]amix=inputs=2:duration=first[aout]`,
+      '-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac', '-shortest', mixed,
+    ]);
+    burnSource = mixed;
+  }
+
   const lines = [];
   lines.push('[Script Info]', 'ScriptType: v4.00+', `PlayResX: ${VW}`, `PlayResY: ${VH}`, '');
   lines.push('[V4+ Styles]');
@@ -146,7 +162,7 @@ async function buildProject(project, onProgress) {
   fs.writeFileSync(assPath, lines.join('\n'));
 
   onProgress && onProgress('captions', scenes.length, scenes.length);
-  const burnArgs = ['-y', '-loglevel', 'error', '-i', joined, '-vf', `ass=${assPath}`, '-c:a', 'copy', outputPath];
+  const burnArgs = ['-y', '-loglevel', 'error', '-i', burnSource, '-vf', `ass=${assPath}`, '-c:a', 'copy', outputPath];
   if (fontsDir && fs.existsSync(fontsDir)) {
     // 번들 폰트를 libass가 찾도록 fontconfig 경로를 작업 폴더에 만든다
     const fc = [
@@ -216,15 +232,75 @@ function runWithEnv(cmd, args, env) {
   });
 }
 
+function runCapture(cmd, args) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, {maxBuffer: 1024 * 1024 * 64}, (err, stdout, stderr) => {
+      if (err) reject(new Error((stderr || err.message).slice(-600)));
+      else resolve({stdout, stderr});
+    });
+  });
+}
+
+// 무음 구간을 찾아 남길 구간(말이 있는 부분) 목록을 만든다
+async function detectKeeps(wavPath, totalDur) {
+  const {stderr} = await runCapture(ffmpegPath, ['-i', wavPath, '-af', 'silencedetect=noise=-35dB:d=0.7', '-f', 'null', '-']);
+  const silences = [];
+  let cur = null;
+  for (const line of stderr.split('\n')) {
+    const s = line.match(/silence_start: ([\d.]+)/);
+    const e = line.match(/silence_end: ([\d.]+)/);
+    if (s) cur = parseFloat(s[1]);
+    if (e && cur !== null) {
+      silences.push([cur, parseFloat(e[1])]);
+      cur = null;
+    }
+  }
+  if (cur !== null) silences.push([cur, totalDur]);
+  const keeps = [];
+  let cursor = 0;
+  for (const [ss, se] of silences) {
+    const keepEnd = ss + 0.12;
+    if (keepEnd - cursor >= 0.3) keeps.push({start: cursor, end: keepEnd});
+    cursor = Math.max(cursor, se - 0.12);
+  }
+  if (totalDur - cursor >= 0.3) keeps.push({start: cursor, end: totalDur});
+  // 너무 가까운 구간은 합친다
+  const merged = [];
+  for (const k of keeps) {
+    const last = merged[merged.length - 1];
+    if (last && k.start - last.end < 0.25) last.end = k.end;
+    else merged.push({...k});
+  }
+  return merged;
+}
+
+function remapSegments(segments, keeps) {
+  const mapped = [];
+  let acc = 0;
+  for (const k of keeps) {
+    mapped.push({...k, newStart: acc});
+    acc += k.end - k.start;
+  }
+  const out = [];
+  for (const s of segments) {
+    for (const k of mapped) {
+      const a = Math.max(s.start, k.start);
+      const b = Math.min(s.end, k.end);
+      if (b - a >= 0.2) out.push({start: k.newStart + (a - k.start), end: k.newStart + (b - k.start), text: s.text});
+    }
+  }
+  return out;
+}
+
 // 영상 모드: 원본 영상에 위스퍼 자막을 입히고 SRT를 함께 만든다.
 async function buildVideoProject(project, onProgress) {
-  const {videoPath, workDir, outputPath, fontsDir = null, captionStyle = 'dohyeon', aspect = '9:16', whisper, title = ''} = project;
+  const {videoPath, workDir, outputPath, fontsDir = null, captionStyle = 'dohyeon', aspect = '9:16', whisper, title = '', trimSilence = false} = project;
   const [W, H] = ASPECTS[aspect] || ASPECTS['9:16'];
   const preset = CAPTION_PRESETS[captionStyle] || CAPTION_PRESETS.dohyeon;
   fs.mkdirSync(workDir, {recursive: true});
 
   onProgress && onProgress('transcribe', 0, 1);
-  const segments = await transcribe({
+  let segments = await transcribe({
     videoPath,
     workDir,
     ffmpegPath,
@@ -233,6 +309,29 @@ async function buildVideoProject(project, onProgress) {
     language: whisper.language || 'ko',
   });
   if (!segments.length) throw new Error('음성에서 자막을 만들 문장을 찾지 못했습니다.');
+
+  // 무음 구간 자동 컷: 말이 없는 긴 공백을 잘라내고 자막 시간을 새 타임라인에 맞춘다
+  let burnVideo = videoPath;
+  if (trimSilence) {
+    const totalDur = await duration(videoPath);
+    const keeps = await detectKeeps(path.join(workDir, 'audio16k.wav'), totalDur);
+    const keptDur = keeps.reduce((a, k) => a + (k.end - k.start), 0);
+    if (keeps.length && keeps.length <= 300 && keptDur < totalDur * 0.97) {
+      segments = remapSegments(segments, keeps);
+      const cutPath = path.join(workDir, 'cut.mp4');
+      const partFiles = [];
+      for (let i = 0; i < keeps.length; i++) {
+        const k = keeps[i];
+        const part = path.join(workDir, `keep${i + 1}.mp4`);
+        await run(ffmpegPath, ['-y', '-loglevel', 'error', '-i', videoPath, '-ss', k.start.toFixed(3), '-t', (k.end - k.start).toFixed(3), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', part]);
+        partFiles.push(part);
+      }
+      const listPath = path.join(workDir, 'keeps.txt');
+      fs.writeFileSync(listPath, partFiles.map((f) => `file '${f.replace(/\\/g, '/')}'`).join('\n'));
+      await run(ffmpegPath, ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', listPath, '-c', 'copy', cutPath]);
+      burnVideo = cutPath;
+    }
+  }
 
   const lines = [];
   lines.push('[Script Info]', 'ScriptType: v4.00+', `PlayResX: ${W}`, `PlayResY: ${H}`, '');
@@ -258,7 +357,7 @@ async function buildVideoProject(project, onProgress) {
 
   onProgress && onProgress('captions', 1, 1);
   const vf = `scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2,ass=${assPath}`;
-  const args = ['-y', '-loglevel', 'error', '-i', videoPath, '-vf', vf, '-c:a', 'aac', '-b:a', '160k', outputPath];
+  const args = ['-y', '-loglevel', 'error', '-i', burnVideo, '-vf', vf, '-c:a', 'aac', '-b:a', '160k', outputPath];
   if (fontsDir && fs.existsSync(fontsDir)) {
     fontsConf(workDir, fontsDir);
     await runWithEnv(ffmpegPath, args, {...process.env, FONTCONFIG_PATH: workDir});

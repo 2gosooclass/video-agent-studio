@@ -44,6 +44,8 @@
     <button id="videoBtn">영상 추가 (자막 자동)</button>
     <button id="textBtn">텍스트로 만들기</button>
     <button id="pdfBtn">슬라이드(PDF) 추가</button>
+    <button id="bgmBtn">배경음악 선택</button>
+    <span id="bgmName" style="font-size:12.5px; color:#9a9ca6;"></span>
     <button id="autoBtn" disabled>자동 대본 만들기</button>
     <button id="settingsBtn">설정</button>
     <div class="steps">
@@ -80,6 +82,9 @@
   <div id="scenes"><div class="empty">아직 장면이 없습니다. 이미지를 추가해 주세요.</div></div>
 </main>
 <footer>
+  <label style="font-size:13px; color:#c9cad1; display:flex; align-items:center; gap:6px;">
+    <input type="checkbox" id="trimSilenceChk"> 영상 무음 구간 자동 컷
+  </label>
   <select id="aspectSelect" title="화면 비율" style="background:#17181c; border:1px solid #34353d; border-radius:8px; color:#e8e9ec; padding:9px 11px; font:inherit; font-size:13px;">
     <option value="9:16">비율 9:16 세로</option>
     <option value="16:9">비율 16:9 가로</option>
@@ -139,6 +144,14 @@
   const settingsPanel = document.getElementById('settingsPanel');
 
   let videoFile = null;
+  let bgmFile = null;
+
+  document.getElementById('bgmBtn').addEventListener('click', async () => {
+    const files = await window.agent.pickAudio();
+    if (!files.length) return;
+    bgmFile = files[0];
+    document.getElementById('bgmName').textContent = '음악: ' + bgmFile.split('/').pop();
+  });
 
   function sync() {
     buildBtn.disabled = !(videoFile || (scenes.length && scenes.every((s) => (s.narration || '').trim())));
@@ -246,6 +259,7 @@
           captionStyle,
           aspect: document.getElementById('aspectSelect').value,
           title: document.getElementById('titleInput').value.trim(),
+          trimSilence: document.getElementById('trimSilenceChk').checked,
         });
         lastOutput = result.outputPath;
         statusEl.className = 'done';
@@ -261,6 +275,7 @@
         captionStyle,
         aspect: document.getElementById('aspectSelect').value,
         title: document.getElementById('titleInput').value.trim(),
+        bgm: bgmFile,
       });
       lastOutput = result.outputPath;
       statusEl.className = 'done';
