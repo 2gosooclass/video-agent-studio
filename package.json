@@ -1,0 +1,47 @@
+{
+  "build": {
+    "appId": "com.2gosoo.videoagent",
+    "files": [
+      "main.js",
+      "preload.js",
+      "engine.js",
+      "tts.js",
+      "renderer/**",
+      "node_modules/**"
+    ],
+    "linux": {
+      "target": "AppImage"
+    },
+    "mac": {
+      "category": "public.app-category.video",
+      "target": "dmg"
+    },
+    "nsis": {
+      "allowToChangeInstallationDirectory": true,
+      "oneClick": false
+    },
+    "productName": "Video Agent Studio",
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/ffprobe": "^2.1.2"
+  },
+  "description": "이미지나 영상을 넣으면 분석, 대본, 나레이션, 자막, 합성까지 자동으로 만드는 데스크톱 영상 제작 앱",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "main": "main.js",
+  "name": "video-agent-studio",
+  "scripts": {
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "engine-test": "node engine-test.js",
+    "start": "electron ."
+  },
+  "version": "0.1.0"
+}

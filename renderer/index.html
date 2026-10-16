@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Video Agent Studio</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; background: #17181c; color: #e8e9ec; height: 100vh; display: flex; flex-direction: column; }
+  header { padding: 18px 24px 12px; border-bottom: 1px solid #26272e; display: flex; align-items: baseline; gap: 14px; }
+  header h1 { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+  header .sub { font-size: 12.5px; color: #9a9ca6; }
+  main { flex: 1; display: flex; flex-direction: column; padding: 18px 24px; gap: 14px; overflow: hidden; }
+  .toolbar { display: flex; gap: 10px; align-items: center; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid #34353d; background: #22232a; color: #e8e9ec; padding: 9px 16px; font-size: 13.5px; font-weight: 600; }
+  button:hover { background: #2a2b34; }
+  button.primary { background: #f5c518; border-color: #f5c518; color: #17181c; font-weight: 800; padding: 11px 22px; font-size: 14.5px; }
+  button.primary:hover { background: #ffd83d; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  #scenes { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+  .scene { display: flex; gap: 14px; background: #1e1f25; border: 1px solid #26272e; border-radius: 12px; padding: 12px; }
+  .scene img { width: 74px; height: 132px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+  .scene .body { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .scene .num { font-size: 12px; color: #9a9ca6; font-weight: 700; }
+  .scene textarea { width: 100%; min-height: 58px; resize: vertical; background: #17181c; border: 1px solid #34353d; border-radius: 8px; color: #e8e9ec; padding: 9px 11px; font: inherit; font-size: 13.5px; line-height: 1.5; }
+  .scene input { width: 220px; background: #17181c; border: 1px solid #34353d; border-radius: 8px; color: #ffd83d; padding: 7px 10px; font: inherit; font-size: 12.5px; }
+  .scene .remove { align-self: flex-start; padding: 5px 10px; font-size: 12px; color: #c7c8cf; }
+  .empty { color: #9a9ca6; font-size: 14px; padding: 42px 0; text-align: center; border: 1px dashed #34353d; border-radius: 12px; }
+  footer { border-top: 1px solid #26272e; padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+  #status { font-size: 13px; color: #9a9ca6; flex: 1; }
+  #status.done { color: #7cf3c8; }
+  .steps { display: flex; gap: 6px; }
+  .step { font-size: 11.5px; font-weight: 700; color: #5d5f68; border: 1px solid #34353d; padding: 4px 9px; border-radius: 999px; }
+  .step.on { color: #17181c; background: #f5c518; border-color: #f5c518; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Video Agent Studio</h1>
+  <div class="sub">이미지를 넣으면 대본, 나레이션, 자막, 합성까지 자동으로 만듭니다</div>
+</header>
+<main>
+  <div class="toolbar">
+    <button id="addBtn">이미지 추가</button>
+    <div class="steps">
+      <span class="step" id="st-plan">1 계획</span>
+      <span class="step" id="st-voice">2 음성</span>
+      <span class="step" id="st-render">3 장면</span>
+      <span class="step" id="st-merge">4 합성</span>
+      <span class="step" id="st-captions">5 자막</span>
+    </div>
+  </div>
+  <div id="scenes"><div class="empty">아직 장면이 없습니다. 이미지를 추가해 주세요.</div></div>
+</main>
+<footer>
+  <button class="primary" id="buildBtn" disabled>영상 만들기</button>
+  <div id="status">장면을 추가하면 시작할 수 있습니다.</div>
+  <button id="openBtn" style="display:none">폴더에서 보기</button>
+</footer>
+<script>
+  const scenesEl = document.getElementById('scenes');
+  const buildBtn = document.getElementById('buildBtn');
+  const statusEl = document.getElementById('status');
+  const openBtn = document.getElementById('openBtn');
+  let scenes = [];
+  let lastOutput = null;
+
+  function setStep(id) {
+    document.querySelectorAll('.step').forEach((s) => s.classList.remove('on'));
+    if (id) document.getElementById(id).classList.add('on');
+  }
+
+  function render() {
+    scenesEl.innerHTML = '';
+    if (!scenes.length) {
+      scenesEl.innerHTML = '<div class="empty">아직 장면이 없습니다. 이미지를 추가해 주세요.</div>';
+    }
+    scenes.forEach((scene, i) => {
+      const div = document.createElement('div');
+      div.className = 'scene';
+      div.innerHTML = `
+        <img src="file://${scene.image.replace(/\\/g, '/')}">
+        <div class="body">
+          <div class="num">장면 ${i + 1}</div>
+          <textarea data-i="${i}" placeholder="이 장면의 나레이션을 적어 주세요">${scene.narration || ''}</textarea>
+          <input data-k="${i}" placeholder="노란색으로 강조할 단어" value="${scene.keyword || ''}">
+          <button class="remove" data-r="${i}">삭제</button>
+        </div>`;
+      scenesEl.appendChild(div);
+    });
+    scenesEl.querySelectorAll('textarea').forEach((ta) => ta.addEventListener('input', (e) => { scenes[+e.target.dataset.i].narration = e.target.value; sync(); }));
+    scenesEl.querySelectorAll('input').forEach((inp) => inp.addEventListener('input', (e) => { scenes[+e.target.dataset.k].keyword = e.target.value; }));
+    scenesEl.querySelectorAll('.remove').forEach((btn) => btn.addEventListener('click', (e) => { scenes.splice(+e.target.dataset.r, 1); render(); sync(); }));
+    sync();
+  }
+
+  function sync() {
+    buildBtn.disabled = !(scenes.length && scenes.every((s) => (s.narration || '').trim()));
+    if (scenes.length) statusEl.textContent = buildBtn.disabled ? '모든 장면에 나레이션을 적어 주세요.' : '준비됐습니다. 영상 만들기를 누르세요.';
+  }
+
+  document.getElementById('addBtn').addEventListener('click', async () => {
+    const files = await window.agent.pickImages();
+    files.forEach((f) => scenes.push({image: f, narration: '', keyword: ''}));
+    render();
+    setStep('st-plan');
+  });
+
+  window.agent.onProgress(({stage, cur, total}) => {
+    const map = {voice: 'st-voice', render: 'st-render', merge: 'st-merge', captions: 'st-captions'};
+    setStep(map[stage]);
+    statusEl.textContent = {voice: '음성을 만드는 중', render: '장면을 렌더링하는 중', merge: '장면을 합치는 중', captions: '자막을 입히는 중'}[stage] + ` (${cur}/${total})`;
+  });
+
+  buildBtn.addEventListener('click', async () => {
+    buildBtn.disabled = true;
+    openBtn.style.display = 'none';
+    statusEl.className = '';
+    try {
+      const result = await window.agent.build({
+        scenes: scenes.map((s) => ({image: s.image, narration: s.narration.trim()})),
+        keywords: scenes.map((s) => (s.keyword || '').trim()),
+      });
+      lastOutput = result.outputPath;
+      statusEl.className = 'done';
+      statusEl.textContent = `완성했습니다. ${Math.round(result.totalDuration)}초 영상: ${result.outputPath}`;
+      openBtn.style.display = '';
+      setStep(null);
+    } catch (e) {
+      statusEl.textContent = '오류가 났습니다: ' + e.message;
+    }
+    buildBtn.disabled = false;
+  });
+
+  openBtn.addEventListener('click', () => { if (lastOutput) window.agent.openFile(lastOutput); });
+  render();
+</script>
+</body>
+</html>
