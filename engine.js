@@ -200,13 +200,13 @@ async function burnSubtitles(inputPath, assPath, outputPath, workDir, fontsDir, 
 
   // 1) Try libass 'ass' filter (bundled ffmpeg in app.asar.unpacked)
   try {
-    const argsAss = ['-y', '-loglevel', 'error', '-i', inputPath, '-vf', vfAss, '-c:a', 'aac', '-b:a', '160k', outputPath];
+    const argsAss = ['-y', '-loglevel', 'error', '-i', inputPath, '-vf', vfAss, '-c:a', 'aac', '-ar', '44100', '-ac', '2', '-b:a', '192k', outputPath];
     await runWithEnv(ffmpegPath, argsAss, env);
     return;
   } catch (err1) {
     // 2) Fallback to 'subtitles' filter
     try {
-      const argsSub = ['-y', '-loglevel', 'error', '-i', inputPath, '-vf', vfSub, '-c:a', 'aac', '-b:a', '160k', outputPath];
+      const argsSub = ['-y', '-loglevel', 'error', '-i', inputPath, '-vf', vfSub, '-c:a', 'aac', '-ar', '44100', '-ac', '2', '-b:a', '192k', outputPath];
       await runWithEnv(ffmpegPath, argsSub, env);
       return;
     } catch (err2) {
@@ -403,9 +403,9 @@ async function buildProject(project, onProgress) {
         '-stream_loop', '-1', '-i', scenes[i].video,
         '-i', mixedAudioPath,
         '-filter_complex',
-        `[0:v]${speedFilter}scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS}[v];[1:a]apad[a]`,
+        `[0:v]${speedFilter}scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS}[v];[1:a]apad,aresample=44100,aformat=channel_layouts=stereo[a]`,
         '-map', '[v]', '-map', '[a]', '-t', String(segDur),
-        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', segPath,
+        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '44100', '-ac', '2', '-b:a', '192k', segPath,
       ]);
     } else {
       // 스마트폰 세로 사진 EXIF 회전 버그 방지 (Auto-Orient 사전 단일 프레임 정규화)
@@ -443,18 +443,19 @@ async function buildProject(project, onProgress) {
       }
 
       let vFilter = '';
+      const aFilter = ';[1:a]apad,aresample=44100,aformat=channel_layouts=stereo[a]';
       if (chosenMotion === 'zoomIn') {
         // 부드럽고 생동감 넘치는 줌인 (1.02배 -> 1.20배) - 키네틱 컷 (블랙 스크린 없음)
-        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.02+0.18*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v];[1:a]apad[a]`;
+        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.02+0.18*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v]${aFilter}`;
       } else if (chosenMotion === 'zoomOut') {
         // 부드러운 줌아웃 (1.20배 -> 1.02배) - 키네틱 컷 (블랙 스크린 없음)
-        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.20-0.18*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v];[1:a]apad[a]`;
+        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.20-0.18*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v]${aFilter}`;
       } else if (chosenMotion === 'tiltDown') {
         // 위에서 아래로 세련되게 훑어내리는 틸트 다운 - 키네틱 컷 (블랙 스크린 없음)
-        vFilter = `[0:v]scale=1200:2280:force_original_aspect_ratio=increase,crop=1200:2280,zoompan=z=1.18:x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*(on/${frames})':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v];[1:a]apad[a]`;
+        vFilter = `[0:v]scale=1200:2280:force_original_aspect_ratio=increase,crop=1200:2280,zoompan=z=1.18:x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*(on/${frames})':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v]${aFilter}`;
       } else if (chosenMotion === 'tiltUp') {
         // 아래에서 위로 감상하는 틸트 업 - 키네틱 컷 (블랙 스크린 없음)
-        vFilter = `[0:v]scale=1200:2280:force_original_aspect_ratio=increase,crop=1200:2280,zoompan=z=1.18:x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*(1-on/${frames})':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v];[1:a]apad[a]`;
+        vFilter = `[0:v]scale=1200:2280:force_original_aspect_ratio=increase,crop=1200:2280,zoompan=z=1.18:x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*(1-on/${frames})':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v]${aFilter}`;
       } else if (chosenMotion === 'fade') {
         // 우아한 미세 무빙 (첫 씬은 쇼츠 0.00초 썸네일/이탈 방지를 위해 페이드인 생략하고 즉시 100% 노출)
         const fadeFilters = [];
@@ -464,10 +465,10 @@ async function buildProject(project, onProgress) {
         const fadeOutStart = Math.max(0, segDur - 0.3).toFixed(2);
         fadeFilters.push(`fade=t=out:st=${fadeOutStart}:d=0.3`);
         const fadeStr = fadeFilters.length ? ',' + fadeFilters.join(',') : '';
-        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.02+0.08*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS}${fadeStr}[v];[1:a]apad[a]`;
+        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.02+0.08*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS}${fadeStr}[v]${aFilter}`;
       } else {
         // 정지 화면 (Static)
-        vFilter = `[0:v]scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH}[v];[1:a]apad[a]`;
+        vFilter = `[0:v]scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH}[v]${aFilter}`;
       }
 
       await run(ffmpegPath, [
@@ -476,7 +477,7 @@ async function buildProject(project, onProgress) {
         '-i', mixedAudioPath,
         '-filter_complex', vFilter,
         '-map', '[v]', '-map', '[a]', '-t', String(segDur),
-        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', segPath,
+        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '44100', '-ac', '2', '-b:a', '192k', segPath,
       ]);
     }
     segFiles.push(segPath);
@@ -517,7 +518,7 @@ async function buildProject(project, onProgress) {
         '-y', '-loglevel', 'error',
         '-i', joined, '-stream_loop', '-1', '-i', project.bgm,
         '-filter_complex', filterComplex,
-        '-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac', '-shortest', mixed,
+        '-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac', '-ar', '44100', '-ac', '2', '-b:a', '192k', '-shortest', mixed,
       ]);
       burnSource = mixed;
     } catch (e) {
@@ -915,7 +916,7 @@ async function buildVideoProject(project, onProgress) {
         '-y', '-loglevel', 'error',
         '-i', burnVideo, '-stream_loop', '-1', '-i', project.bgm,
         '-filter_complex', filterComplex,
-        '-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac', '-shortest', bgmMuxed
+        '-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac', '-ar', '44100', '-ac', '2', '-b:a', '192k', '-shortest', bgmMuxed
       ]);
       burnVideo = bgmMuxed;
     } catch (e) {

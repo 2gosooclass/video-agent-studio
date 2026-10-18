@@ -386,18 +386,21 @@
     <div style="display:flex; gap:8px; flex-wrap:wrap;">
       <input id="apiKeyInput" type="password" placeholder="Gemini API Key (aistudio.google.com)" style="flex:1; min-width:260px; background:#121318; border:1px solid #2e313d; border-radius:8px; color:#f1f5f9; padding:8px 10px; font:inherit; font-size:12.5px;">
       <input id="modelInput" placeholder="Model" value="gemini-2.5-flash" style="width:160px; background:#121318; border:1px solid #2e313d; border-radius:8px; color:#f1f5f9; padding:8px 10px; font:inherit; font-size:12.5px;">
-      <select id="voiceSelect" style="width:240px;">
-        <option value="Kore">👩 Female 30s (Narrator/Info - Default)</option>
-        <option value="Leda">👧 Female 20s (Fresh & Lively / Shorts)</option>
-        <option value="Puck">👦 Male 20s (Energetic Creator)</option>
-        <option value="Orus">👨 Male 30s (Clean & Smart Tech)</option>
-        <option value="Aoede">👩 Female 40s (Elegant & Warm Lifestyle)</option>
-        <option value="Charon">👨 Male 40s (Deep & Authoritative)</option>
-        <option value="Zephyr">👩 Female 40-50s (Calm & Poetic Essay)</option>
-        <option value="Sulafat">👵 Senior Female 50-60s (Warm Healing)</option>
-        <option value="Fenrir">👴 Senior Male 50-60s (Deep Documentary)</option>
-        <option value="VoiceBox">🎙️ Custom Cloned Voice (VoiceBox AI)</option>
-      </select>
+      <div style="display:inline-flex; gap:6px; align-items:center;">
+        <select id="voiceSelect" style="width:230px;">
+          <option value="Kore">👩 Female 30s (Narrator/Info - Default)</option>
+          <option value="Leda">👧 Female 20s (Fresh & Lively / Shorts)</option>
+          <option value="Puck">👦 Male 20s (Energetic Creator)</option>
+          <option value="Orus">👨 Male 30s (Clean & Smart Tech)</option>
+          <option value="Aoede">👩 Female 40s (Elegant & Warm Lifestyle)</option>
+          <option value="Charon">👨 Male 40s (Deep & Authoritative)</option>
+          <option value="Zephyr">👩 Female 40-50s (Calm & Poetic Essay)</option>
+          <option value="Sulafat">👵 Senior Female 50-60s (Warm Healing)</option>
+          <option value="Fenrir">👴 Senior Male 50-60s (Deep Documentary)</option>
+          <option value="VoiceBox">🎙️ Custom Cloned Voice (VoiceBox AI)</option>
+        </select>
+        <button id="settingsVoicePreviewBtn" type="button" style="padding:8px 12px; font-size:12px; font-weight:700; background:rgba(56,189,248,0.15); border:1px solid #38bdf8; color:#38bdf8; border-radius:8px; cursor:pointer;">🔊 미리듣기</button>
+      </div>
       <button id="saveSettingsBtn" class="primary" style="padding:8px 16px; font-size:12.5px;">Save</button>
     </div>
   </div>
@@ -469,8 +472,7 @@
             <option value="Sulafat">👵 Senior Female 50-60s (Warm Healing)</option>
             <option value="Fenrir">👴 Senior Male 50-60s (Deep Documentary)</option>
             <option value="VoiceBox">🎙️ Custom Cloned Voice (VoiceBox AI)</option>
-          </select>
-          <button id="voicePreviewBtn" type="button" title="Preview selected voice" style="padding:5px 8px; font-size:11px; background:#131520; border:1px solid #38bdf8; color:#38bdf8; border-radius:6px; cursor:pointer; flex-shrink:0;">🔊</button>
+          <button id="voicePreviewBtn" type="button" title="Preview selected voice" style="padding:5px 9px; font-size:11px; font-weight:700; background:rgba(56,189,248,0.15); border:1px solid #38bdf8; color:#38bdf8; border-radius:6px; cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:3px;">🔊 <span id="voicePreviewLabel">미리듣기</span></button>
         </div>
         <div style="display:flex; gap:6px;">
           <select id="captionStyleSelect" style="flex:1.2; background:#131520; border:1px solid #282c3f; border-radius:6px; color:#38bdf8; padding:6px 8px; font:inherit; font-size:11px; font-weight:600;">
@@ -1522,12 +1524,73 @@
   const voiceSelectEl = document.getElementById('voiceSelect');
   const mainVoiceSelectEl = document.getElementById('mainVoiceSelect');
   const voicePreviewBtn = document.getElementById('voicePreviewBtn');
+  const settingsVoicePreviewBtn = document.getElementById('settingsVoicePreviewBtn');
+  let currentVoiceAudio = null;
 
   document.getElementById('settingsBtn').addEventListener('click', () => {
     settingsPanel.style.display = settingsPanel.style.display === 'none' ? '' : 'none';
   });
 
-  // 메인 화면 보이스 변경 시 설정창과 자동 동기화 + 즉시 저장
+  async function triggerVoicePreview(selectedVoice, triggerBtn) {
+    const isEn = currentLang === 'en';
+    const label = (mainVoiceSelectEl.querySelector(`option[value="${selectedVoice}"]`) || {}).text || selectedVoice;
+
+    if (currentVoiceAudio) {
+      currentVoiceAudio.pause();
+      currentVoiceAudio = null;
+      if (voicePreviewBtn) voicePreviewBtn.innerHTML = `🔊 <span>${isEn ? 'Preview' : '미리듣기'}</span>`;
+      if (settingsVoicePreviewBtn) settingsVoicePreviewBtn.innerHTML = `🔊 <span>${isEn ? 'Preview' : '미리듣기'}</span>`;
+    }
+
+    if (triggerBtn) {
+      triggerBtn.disabled = true;
+      triggerBtn.innerHTML = '⏳ <span>...</span>';
+    }
+
+    statusEl.textContent = isEn
+      ? `🔊 Playing voice sample for [${label}]...`
+      : `🔊 [${label}] 성우 목소리 미리듣기 재생 중...`;
+
+    try {
+      const res = await window.agent.previewVoice({
+        voice: selectedVoice,
+        text: '안녕하세요, 영상을 더욱 품격 있게 만들어 드리는 나레이션 목소리입니다.',
+      });
+      if (res && res.success && res.uri) {
+        const audio = new Audio(res.uri);
+        audio.volume = 1.0;
+        await audio.play();
+        currentVoiceAudio = audio;
+
+        if (triggerBtn) {
+          triggerBtn.disabled = false;
+          triggerBtn.innerHTML = `⏹️ <span>${isEn ? 'Stop' : '정지'}</span>`;
+        }
+
+        audio.onended = () => {
+          if (currentVoiceAudio === audio) {
+            currentVoiceAudio = null;
+            if (voicePreviewBtn) voicePreviewBtn.innerHTML = `🔊 <span>${isEn ? 'Preview' : '미리듣기'}</span>`;
+            if (settingsVoicePreviewBtn) settingsVoicePreviewBtn.innerHTML = `🔊 <span>${isEn ? 'Preview' : '미리듣기'}</span>`;
+          }
+        };
+      } else {
+        if (triggerBtn) {
+          triggerBtn.disabled = false;
+          triggerBtn.innerHTML = `🔊 <span>${isEn ? 'Preview' : '미리듣기'}</span>`;
+        }
+        alert((isEn ? 'Voice preview failed: ' : '보이스 미리듣기 실패: ') + ((res && res.error) || 'Error'));
+      }
+    } catch (err) {
+      if (triggerBtn) {
+        triggerBtn.disabled = false;
+        triggerBtn.innerHTML = `🔊 <span>${isEn ? 'Preview' : '미리듣기'}</span>`;
+      }
+      console.error('Voice preview error:', err);
+    }
+  }
+
+  // 메인 화면 보이스 변경 시 설정창 자동 동기화 + 즉시 저장 + 즉시 목소리 자동 미리듣기!
   mainVoiceSelectEl.addEventListener('change', async () => {
     voiceSelectEl.value = mainVoiceSelectEl.value;
     await window.agent.saveSettings({
@@ -1538,45 +1601,41 @@
     statusEl.textContent = isEn
       ? `🗣️ Narration voice set to [${label}].`
       : `🗣️ 나레이션 보이스가 [${label}](으)로 설정되었습니다.`;
+    triggerVoicePreview(mainVoiceSelectEl.value, voicePreviewBtn);
   });
 
   voiceSelectEl.addEventListener('change', () => {
     mainVoiceSelectEl.value = voiceSelectEl.value;
+    triggerVoicePreview(voiceSelectEl.value, settingsVoicePreviewBtn);
   });
 
-  // 연령대별 AI 보이스 미리듣기 버튼
-  voicePreviewBtn.addEventListener('click', async () => {
-    const selectedVoice = mainVoiceSelectEl.value;
-    const origText = voicePreviewBtn.textContent;
-    const isEn = currentLang === 'en';
-    voicePreviewBtn.disabled = true;
-    voicePreviewBtn.textContent = isEn ? '⏳ Generating...' : '⏳ 생성중';
-    statusEl.textContent = isEn
-      ? `🔊 Generating voice sample for ${selectedVoice}...`
-      : `🔊 선택한 보이스(${selectedVoice}) 샘플 음성을 생성하고 있습니다...`;
-    try {
-      const sampleText = scenes.length && scenes[0].narration
-        ? scenes[0].narration
-        : (isEn ? 'Hello! This is a voice sample for your Shorts video.' : '안녕하세요, 선택한 연령대 나레이션 목소리 샘플입니다.');
-      const res = await window.agent.previewVoice({
-        voice: selectedVoice,
-        text: sampleText,
-      });
-      if (res && res.success && res.uri) {
-        playAudioPreview(res.uri);
-        statusEl.textContent = isEn
-          ? `🔊 Playing preview for [${mainVoiceSelectEl.options[mainVoiceSelectEl.selectedIndex].text}]`
-          : `🔊 [${mainVoiceSelectEl.options[mainVoiceSelectEl.selectedIndex].text}] 미리듣기 재생 중`;
-      } else {
-        alert((isEn ? 'Voice preview failed: ' : '보이스 미리듣기 실패: ') + ((res && res.error) || (isEn ? 'Please check your API key.' : 'API 키를 확인해주세요.')));
-      }
-    } catch (err) {
-      alert((isEn ? 'Voice preview error: ' : '보이스 미리듣기 오류: ') + err.message);
-    } finally {
-      voicePreviewBtn.disabled = false;
-      voicePreviewBtn.textContent = origText;
+  // 메인 화면 보이스 미리듣기 버튼 클릭
+  voicePreviewBtn.addEventListener('click', () => {
+    if (currentVoiceAudio) {
+      currentVoiceAudio.pause();
+      currentVoiceAudio = null;
+      const isEn = currentLang === 'en';
+      voicePreviewBtn.innerHTML = `🔊 <span>${isEn ? 'Preview' : '미리듣기'}</span>`;
+      if (settingsVoicePreviewBtn) settingsVoicePreviewBtn.innerHTML = `🔊 <span>${isEn ? 'Preview' : '미리듣기'}</span>`;
+      return;
     }
+    triggerVoicePreview(mainVoiceSelectEl.value, voicePreviewBtn);
   });
+
+  // 설정 패널 보이스 미리듣기 버튼 클릭
+  if (settingsVoicePreviewBtn) {
+    settingsVoicePreviewBtn.addEventListener('click', () => {
+      if (currentVoiceAudio) {
+        currentVoiceAudio.pause();
+        currentVoiceAudio = null;
+        const isEn = currentLang === 'en';
+        settingsVoicePreviewBtn.innerHTML = `🔊 <span>${isEn ? 'Preview' : '미리듣기'}</span>`;
+        if (voicePreviewBtn) voicePreviewBtn.innerHTML = `🔊 <span>${isEn ? 'Preview' : '미리듣기'}</span>`;
+        return;
+      }
+      triggerVoicePreview(voiceSelectEl.value, settingsVoicePreviewBtn);
+    });
+  }
 
   document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
     mainVoiceSelectEl.value = voiceSelectEl.value;

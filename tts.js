@@ -61,16 +61,29 @@ async function synthesizeGemini(text, outPath, ffmpegPath, opts) {
   if (!part) throw new Error('Gemini TTS 응답에 음성이 없습니다.');
   const pcmPath = outPath + '.pcm';
   fs.writeFileSync(pcmPath, Buffer.from(part.inlineData.data, 'base64'));
-  await run(ffmpegPath, ['-y', '-loglevel', 'error', '-f', 's16le', '-ar', '24000', '-ac', '1', '-i', pcmPath, outPath]);
+  // 방송 표준 44,100Hz 2채널(스테레오) 192k AAC/MP3 규격으로 정규화
+  await run(ffmpegPath, ['-y', '-loglevel', 'error', '-f', 's16le', '-ar', '24000', '-ac', '1', '-i', pcmPath, '-ar', '44100', '-ac', '2', '-b:a', '192k', outPath]);
   fs.unlinkSync(pcmPath);
   return outPath;
 }
 
-async function synthesizeOS(text, outPath, ffmpegPath) {
+async function synthesizeOS(text, outPath, ffmpegPath, voiceName = 'Kore') {
   if (process.platform === 'darwin') {
     const aiff = outPath + '.aiff';
-    await run('say', ['-v', 'Yuna', '-o', aiff, text]);
-    await run(ffmpegPath, ['-y', '-loglevel', 'error', '-i', aiff, outPath]);
+    const voiceMap = {
+      Kore: 'Yuna',
+      Leda: 'Flo',
+      Puck: 'Reed',
+      Orus: 'Eddy',
+      Aoede: 'Shelley',
+      Charon: 'Rocko',
+      Zephyr: 'Yuna',
+      Sulafat: 'Grandma',
+      Fenrir: 'Grandpa',
+    };
+    const macVoice = voiceMap[voiceName] || 'Yuna';
+    await run('say', ['-v', macVoice, '-o', aiff, text]);
+    await run(ffmpegPath, ['-y', '-loglevel', 'error', '-i', aiff, '-ar', '44100', '-ac', '2', '-b:a', '192k', outPath]);
     fs.unlinkSync(aiff);
     return outPath;
   }
@@ -86,7 +99,7 @@ async function synthesizeOS(text, outPath, ffmpegPath) {
       '$s.Dispose();',
     ].join(' ');
     await run('powershell', ['-NoProfile', '-Command', ps]);
-    await run(ffmpegPath, ['-y', '-loglevel', 'error', '-i', wav, outPath]);
+    await run(ffmpegPath, ['-y', '-loglevel', 'error', '-i', wav, '-ar', '44100', '-ac', '2', '-b:a', '192k', outPath]);
     fs.unlinkSync(wav);
     return outPath;
   }
@@ -94,7 +107,8 @@ async function synthesizeOS(text, outPath, ffmpegPath) {
 }
 
 async function synthesize(text, outPath, ffmpegPath, opts = {}) {
-  if (opts.voice === 'VoiceBox') {
+  const chosenVoice = opts.voice || 'Kore';
+  if (chosenVoice === 'VoiceBox') {
     try {
       return await synthesizeVoiceBox(text, outPath, ffmpegPath, opts);
     } catch (e) {
@@ -106,13 +120,13 @@ async function synthesize(text, outPath, ffmpegPath, opts = {}) {
       return await synthesizeGemini(text, outPath, ffmpegPath, opts);
     } catch (e) {
       try {
-        return await synthesizeOS(text, outPath, ffmpegPath);
+        return await synthesizeOS(text, outPath, ffmpegPath, chosenVoice);
       } catch (e2) {
         return null;
       }
     }
   }
-  return synthesizeOS(text, outPath, ffmpegPath);
+  return synthesizeOS(text, outPath, ffmpegPath, chosenVoice);
 }
 
 module.exports = {synthesize};

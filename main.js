@@ -86,6 +86,20 @@ function resolveBgmPath(bgmVal) {
   return null;
 }
 
+function resolveVoiceSamplePath(voiceName) {
+  if (!voiceName) return null;
+  const voiceDirs = [
+    app.isPackaged ? path.join(process.resourcesPath, 'assets', 'voices') : null,
+    app.isPackaged ? path.join(process.resourcesPath, 'voices') : null,
+    path.join(__dirname, 'assets', 'voices'),
+  ].filter(Boolean);
+  for (const dir of voiceDirs) {
+    const candidate = path.join(dir, `${voiceName}.mp3`);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
 app.whenReady().then(() => {
   const win = createWindow();
 
@@ -326,31 +340,48 @@ app.whenReady().then(() => {
     }
   });
 
-  // 연령대별 나레이션 보이스 미리듣기
-  ipcMain.handle('preview-voice', async (event, voiceName) => {
+  // 연령대별 나레이션 보이스 미리듣기 (고음질 오프라인 샘플 0ms 즉각 재생 + Gemini TTS 동적 생성)
+  ipcMain.handle('preview-voice', async (event, payload) => {
+    const voiceName = (typeof payload === 'object' && payload ? payload.voice : payload) || 'Kore';
+    const samplePath = resolveVoiceSamplePath(voiceName);
+    if (samplePath && fs.existsSync(samplePath)) {
+      return {
+        success: true,
+        uri: 'data:audio/mp3;base64,' + fs.readFileSync(samplePath).toString('base64'),
+        voice: voiceName,
+      };
+    }
     const settings = loadSettings();
     const ffmpegPath = getFfmpegPath();
     const cacheDir = path.join(os.tmpdir(), 'video-agent-voice-preview');
     fs.mkdirSync(cacheDir, {recursive: true});
     const outPath = path.join(cacheDir, `voice-preview-${voiceName}.mp3`);
-    if (!fs.existsSync(outPath) || fs.statSync(outPath).size < 500) {
-      await synthesize(
-        '안녕하세요, 영상을 더욱 품격 있게 만들어 드리는 나레이션 목소리입니다.',
-        outPath,
-        ffmpegPath,
-        {
-          apiKey: settings.apiKey || '',
-          ttsModel: settings.ttsModel || 'gemini-2.5-flash-preview-tts',
-          voice: voiceName || 'Kore',
-          voiceboxUrl: settings.voiceboxUrl || 'http://192.168.12.86:17493',
-          voiceboxProfile: settings.voiceboxProfile || 'ddf94b87-c330-41cf-96be-820d5c279dcd',
-        }
-      );
+    try {
+      if (!fs.existsSync(outPath) || fs.statSync(outPath).size < 500) {
+        await synthesize(
+          (typeof payload === 'object' && payload?.text) ? payload.text : '안녕하세요, 영상을 더욱 품격 있게 만들어 드리는 나레이션 목소리입니다.',
+          outPath,
+          ffmpegPath,
+          {
+            apiKey: settings.apiKey || '',
+            ttsModel: settings.ttsModel || 'gemini-2.5-flash-preview-tts',
+            voice: voiceName || 'Kore',
+            voiceboxUrl: settings.voiceboxUrl || 'http://192.168.12.86:17493',
+            voiceboxProfile: settings.voiceboxProfile || 'ddf94b87-c330-41cf-96be-820d5c279dcd',
+          }
+        );
+      }
+      if (fs.existsSync(outPath) && fs.statSync(outPath).size > 500) {
+        return {
+          success: true,
+          uri: 'data:audio/mp3;base64,' + fs.readFileSync(outPath).toString('base64'),
+          voice: voiceName,
+        };
+      }
+    } catch (e) {
+      console.error('preview-voice error:', e);
     }
-    if (fs.existsSync(outPath)) {
-      return 'data:audio/mp3;base64,' + fs.readFileSync(outPath).toString('base64');
-    }
-    return null;
+    return {success: false, error: 'Voice preview not available'};
   });
 
   ipcMain.handle('build-video', async (event, payload) => {
