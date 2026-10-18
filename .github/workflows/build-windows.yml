@@ -44,8 +44,10 @@ jobs:
           Write-Host "FFmpeg binaries placed in bin/ successfully"
 
       - name: Build Windows Installer & Portable Executable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx electron-builder --win --x64
+          npx electron-builder --win --x64 --publish never
 
       - name: Upload to GitHub Release
         shell: bash
