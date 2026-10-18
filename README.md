@@ -27,6 +27,16 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/2gosooclass/video-agent-studio/stargazers">
+    <img src="https://img.shields.io/github/stars/2gosooclass/video-agent-studio?style=for-the-badge&logo=github&logoColor=white&color=f59e0b&label=⭐%20Star%20Project" alt="GitHub Stars"/>
+  </a>
+  &nbsp;
+  <a href="https://github.com/2gosooclass/video-agent-studio/network/members">
+    <img src="https://img.shields.io/github/forks/2gosooclass/video-agent-studio?style=for-the-badge&logo=github&logoColor=white&color=6366f1&label=🍴%20Fork" alt="GitHub Forks"/>
+  </a>
+</p>
+
+<p align="center">
   <a href="https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-0.8.0-arm64.dmg">
     <img src="https://img.shields.io/badge/🍏_Direct_Download-macOS_Apple_Silicon_(740MB)-181717?style=for-the-badge&logo=apple&logoColor=white" alt="Download macOS DMG"/>
   </a>
