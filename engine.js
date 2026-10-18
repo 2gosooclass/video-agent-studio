@@ -73,7 +73,6 @@ let ffprobePath = resolveBinary('@ffprobe-installer/ffprobe', 'ffprobe', [
 ]);
 const {synthesize} = require('./tts');
 const {ensureSfxFile, pickAutoSfx} = require('./sfx');
-const {detectMosaicTargetsViaGemini} = require('./analysis');
 
 const FPS = 30;
 const GAP = 0.8;
@@ -115,223 +114,6 @@ function run(cmd, args) {
       else resolve(stdout);
     });
   });
-}
-
-async function detectLocalFaces(imagePath) {
-  const detectBins = [
-    path.join(__dirname, 'tools', 'get_faces.swift'),
-    path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'tools', 'get_faces.swift'),
-    '/tmp/get_faces.swift'
-  ];
-  const faces = [];
-  for (const scr of detectBins) {
-    if (fs.existsSync(scr)) {
-      try {
-        const out = await run('swift', [scr, imagePath]);
-        const lines = out.trim().split('\n').filter(Boolean);
-        for (const line of lines) {
-          const parts = line.split(',').map(Number);
-          if (parts.length === 4 && parts.every(n => !isNaN(n))) {
-            const [x1, y1, x2, y2] = parts;
-            faces.push({ x1, y1, x2, y2 });
-          }
-        }
-        if (faces.length) break;
-      } catch (_) {}
-    }
-  }
-  return faces;
-}
-
-async function generateMosaicMaskPng(imagePath, maskPath, VW, VH, mosaicTarget = '', apiKey = '') {
-  let targetBoxes = [];
-  const cleanTarget = (mosaicTarget || '').trim();
-  const allFaces = await detectLocalFaces(imagePath);
-
-  // 1) Natural Language Visual Grounding via Gemini 2.5 Flash
-  if (cleanTarget && apiKey && !/^(all|모든|전부|전체|all faces)/i.test(cleanTarget)) {
-    try {
-      const gBoxes = await detectMosaicTargetsViaGemini({
-        apiKey,
-        imagePath,
-        prompt: cleanTarget
-      });
-      if (gBoxes && gBoxes.length) {
-        const isObjectTarget = /license|plate|car|번호판|차량|화면|모니터|로고|문서|상표/i.test(cleanTarget);
-        if (isObjectTarget || !allFaces.length) {
-          // 사물 타겟이거나 로컬 얼굴 검출이 안 된 경우 제미나이 박스 직접 사용
-          for (const [ymin, xmin, ymax, xmax] of gBoxes) {
-            const x = Math.round((xmin / 1000.0) * VW);
-            const y = Math.round((ymin / 1000.0) * VH);
-            const w = Math.round(((xmax - xmin) / 1000.0) * VW);
-            const h = Math.round(((ymax - ymin) / 1000.0) * VH);
-            targetBoxes.push({x, y, w, h, isFace: !isObjectTarget});
-          }
-        } else {
-          // 인물 타겟: 제미나이가 찾은 타겟 인물 영역과 겹치는 로컬 얼굴 박스를 80% 타원으로 정밀 매칭
-          const matchedFaces = [];
-          for (const f of allFaces) {
-            const fcx = (f.x1 + f.x2) / 2;
-            const fcy = (f.y1 + f.y2) / 2;
-            const normCx = (fcx / VW) * 1000.0;
-            const normCy = (fcy / VH) * 1000.0;
-            for (const [ymin, xmin, ymax, xmax] of gBoxes) {
-              const xMargin = 50;
-              const yMargin = 60;
-              if (normCx >= (xmin - xMargin) && normCx <= (xmax + xMargin) &&
-                  normCy >= (ymin - yMargin) && normCy <= (ymax + yMargin)) {
-                matchedFaces.push(f);
-                break;
-              }
-            }
-          }
-
-          if (matchedFaces.length) {
-            for (const f of matchedFaces) {
-              const fw = f.x2 - f.x1;
-              const fh = f.y2 - f.y1;
-              const fcx = (f.x1 + f.x2) / 2;
-              const fcy = (f.y1 + f.y2) / 2;
-              const w80 = Math.round(fw * 0.85);
-              const h80 = Math.round(fh * 0.85);
-              targetBoxes.push({
-                x: Math.round(fcx - w80 / 2),
-                y: Math.round(fcy - h80 / 2),
-                w: w80,
-                h: h80,
-                isFace: true
-              });
-            }
-          } else {
-            // 매칭되는 로컬 얼굴이 없으면 제미나이 박스를 얼굴 크기로 적절히 사용
-            for (const [ymin, xmin, ymax, xmax] of gBoxes) {
-              const x = Math.round((xmin / 1000.0) * VW);
-              const y = Math.round((ymin / 1000.0) * VH);
-              const w = Math.round(((xmax - xmin) / 1000.0) * VW);
-              const h = Math.round(((ymax - ymin) / 1000.0) * VH);
-              targetBoxes.push({x, y, w, h, isFace: true});
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[MosaicTarget] Gemini visual grounding fallback:', err);
-    }
-  }
-
-  // 2) 프롬프트가 없거나(기본 전체), 제미나이 매칭 결과가 없으면 감지된 모든 얼굴 80% 모자이크 적용
-  if (!targetBoxes.length && allFaces.length) {
-    for (const f of allFaces) {
-      const fw = f.x2 - f.x1;
-      const fh = f.y2 - f.y1;
-      const fcx = (f.x1 + f.x2) / 2;
-      const fcy = (f.y1 + f.y2) / 2;
-      const w80 = Math.round(fw * 0.85);
-      const h80 = Math.round(fh * 0.85);
-      targetBoxes.push({
-        x: Math.round(fcx - w80 / 2),
-        y: Math.round(fcy - h80 / 2),
-        w: w80,
-        h: h80,
-        isFace: true
-      });
-    }
-  }
-
-  if (!targetBoxes.length) return false;
-
-  // 3) Draw combined feathered mask via Python PIL
-  const pyCode = `import json; from PIL import Image, ImageDraw, ImageFilter; vw, vh = ${VW}, ${VH}; mask = Image.new('L', (vw, vh), 0); draw = ImageDraw.Draw(mask); boxes = json.loads('${JSON.stringify(targetBoxes)}');
-for b in boxes:
-    x = max(0, min(vw - 2, b['x']))
-    y = max(0, min(vh - 2, b['y']))
-    w = max(4, b['w'])
-    h = max(4, b['h'])
-    x2 = min(vw, x + w)
-    y2 = min(vh, y + h)
-    if b.get('isFace', True):
-        draw.ellipse((x, y, x2, y2), fill=255)
-    else:
-        draw.rounded_rectangle((x, y, x2, y2), radius=max(4, int(min(w, h)*0.15)), fill=255)
-mask = mask.filter(ImageFilter.GaussianBlur(radius=8))
-mask.save('${maskPath.replace(/\\/g, '/')}')
-`;
-  await run('python3', ['-c', pyCode]);
-  return fs.existsSync(maskPath);
-}
-
-async function applyAutoMosaic(srcPath, dstPath, VW, VH, mosaicTarget = '', apiKey = '') {
-  try {
-    const maskPng = path.join(path.dirname(dstPath), `mask_photo_${Date.now()}.png`);
-    const hasTargets = await generateMosaicMaskPng(srcPath, maskPng, VW, VH, mosaicTarget, apiKey);
-    if (!hasTargets) {
-      fs.copyFileSync(srcPath, dstPath);
-      return dstPath;
-    }
-    const pixW = Math.max(16, Math.floor(VW / 24));
-    const pixH = Math.max(16, Math.floor(VH / 24));
-    await run(ffmpegPath, [
-      '-y', '-loglevel', 'error',
-      '-i', srcPath,
-      '-i', maskPng,
-      '-filter_complex',
-      `[0:v]scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},split[base][for_pix];` +
-      `[for_pix]scale=${pixW}:${pixH},scale=${VW}:${VH}:flags=neighbor[pix];` +
-      `[pix][1:v]alphamerge[pix_alpha];` +
-      `[base][pix_alpha]overlay=0:0[v]`,
-      '-map', '[v]',
-      dstPath
-    ]);
-    return fs.existsSync(dstPath) ? dstPath : srcPath;
-  } catch (err) {
-    console.warn('[applyAutoMosaic] error:', err);
-    fs.copyFileSync(srcPath, dstPath);
-    return dstPath;
-  }
-}
-
-async function applyVideoFaceMosaic(srcVideo, dstVideo, startTime, endTime, VW, VH, FPS, segDir, n, mosaicTarget = '', apiKey = '') {
-  try {
-    const probeFrame = path.join(segDir, `probe_face_${n}.jpg`);
-    const maskPng = path.join(segDir, `face_mask_${n}.png`);
-    const sampleSec = Math.max(0, (startTime || 0) + 0.05);
-
-    await run(ffmpegPath, [
-      '-y', '-loglevel', 'error',
-      '-ss', String(sampleSec.toFixed(3)),
-      '-i', srcVideo,
-      '-vf', `scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH}`,
-      '-vframes', '1',
-      probeFrame
-    ]);
-
-    const hasTargets = await generateMosaicMaskPng(probeFrame, maskPng, VW, VH, mosaicTarget, apiKey);
-    if (!hasTargets) return false;
-
-    const pixW = Math.max(16, Math.floor(VW / 24));
-    const pixH = Math.max(16, Math.floor(VH / 24));
-
-    await run(ffmpegPath, [
-      '-y', '-loglevel', 'error',
-      '-ss', String((startTime || 0).toFixed(3)),
-      '-to', String((endTime || 0).toFixed(3)),
-      '-i', srcVideo,
-      '-loop', '1', '-i', maskPng,
-      '-filter_complex',
-      `[0:v]scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS},split[base][for_pix];` +
-      `[for_pix]scale=${pixW}:${pixH},scale=${VW}:${VH}:flags=neighbor[pix];` +
-      `[pix][1:v]alphamerge[pix_alpha];` +
-      `[base][pix_alpha]overlay=0:0:shortest=1[v]`,
-      '-map', '[v]', '-map', '0:a?',
-      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac',
-      dstVideo
-    ]);
-
-    return fs.existsSync(dstVideo);
-  } catch (e) {
-    console.warn('[VideoMosaic] error, fallback', e);
-    return false;
-  }
 }
 
 async function duration(file) {
@@ -455,8 +237,6 @@ async function buildProject(project, onProgress) {
     showSubtitles = true,
     outputMode = 'both', // 'both', 'voiceOnly', 'subtitlesOnly'
     sfxPack = 'variety', // variety, lecture, transition, none
-    autoMosaic = false,
-    globalMosaicTarget = '',
     apiKey = (project.tts && project.tts.apiKey) || project.apiKey || '',
   } = project;
   const preset = CAPTION_PRESETS[captionStyle] || CAPTION_PRESETS.scdream || CAPTION_PRESETS.blackhan;
@@ -495,24 +275,16 @@ async function buildProject(project, onProgress) {
       onProgress && onProgress('voice', n, scenes.length);
       const segDur = curScene.end - curScene.start;
       const cutVideoSeg = path.join(segDir, `orig_seg${n}.mp4`);
-      const targetPrompt = curScene.mosaicTarget || globalMosaicTarget || '';
-      const shouldMosaic = (curScene.mosaic === true) || (autoMosaic && curScene.mosaic !== false) || !!curScene.mosaicTarget;
-      let mosaicked = false;
-      if (shouldMosaic) {
-        mosaicked = await applyVideoFaceMosaic(curScene.video, cutVideoSeg, curScene.start, curScene.end, VW, VH, FPS, segDir, n, targetPrompt, apiKey);
-      }
-      if (!mosaicked) {
-        await run(ffmpegPath, [
-          '-y', '-loglevel', 'error',
-          '-ss', String(curScene.start.toFixed(3)),
-          '-to', String(curScene.end.toFixed(3)),
-          '-i', curScene.video,
-          '-vf', `scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS}`,
-          '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-          '-c:a', 'aac', '-ar', '44100', '-ac', '2',
-          cutVideoSeg
-        ]);
-      }
+      await run(ffmpegPath, [
+        '-y', '-loglevel', 'error',
+        '-ss', String(curScene.start.toFixed(3)),
+        '-to', String(curScene.end.toFixed(3)),
+        '-i', curScene.video,
+        '-vf', `scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS}`,
+        '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac', '-ar', '44100', '-ac', '2',
+        cutVideoSeg
+      ]);
 
       const sfxKind = curScene.sfx && curScene.sfx !== 'auto' && curScene.sfx !== 'none'
         ? curScene.sfx : null;
@@ -626,60 +398,15 @@ async function buildProject(project, onProgress) {
         speedFilter = `setpts=${ptsRatio}*PTS,`;
       }
 
-      // AI 초상권 안심 보호 (타겟 지정 및 얼굴 80% 모자이크)
-      const targetPrompt = curScene.mosaicTarget || globalMosaicTarget || '';
-      const shouldMosaic = (curScene.mosaic === true) || (autoMosaic && curScene.mosaic !== false) || !!curScene.mosaicTarget;
-      let maskPng = null;
-      if (shouldMosaic) {
-        try {
-          const probeFrame = path.join(segDir, `probe_face_2b_${n}.jpg`);
-          const candMask = path.join(segDir, `face_mask_2b_${n}.png`);
-          const sampleSec = Math.max(0, (curScene.start || 0) + 0.05);
-          await run(ffmpegPath, [
-            '-y', '-loglevel', 'error',
-            '-ss', String(sampleSec.toFixed(3)),
-            '-i', scenes[i].video,
-            '-vf', `scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH}`,
-            '-vframes', '1',
-            probeFrame
-          ]);
-          const hasTargets = await generateMosaicMaskPng(probeFrame, candMask, VW, VH, targetPrompt, apiKey);
-          if (hasTargets && fs.existsSync(candMask)) {
-            maskPng = candMask;
-          }
-        } catch (err) {
-          console.warn('[VideoMosaic 2B] probe error:', err);
-        }
-      }
-
-      if (maskPng) {
-        const pixW = Math.max(16, Math.floor(VW / 24));
-        const pixH = Math.max(16, Math.floor(VH / 24));
-        await run(ffmpegPath, [
-          '-y', '-loglevel', 'error',
-          '-stream_loop', '-1', '-i', scenes[i].video,
-          '-loop', '1', '-i', maskPng,
-          '-i', mixedAudioPath,
-          '-filter_complex',
-          `[0:v]${speedFilter}scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS},split[base][for_pix];` +
-          `[for_pix]scale=${pixW}:${pixH},scale=${VW}:${VH}:flags=neighbor[pix];` +
-          `[pix][1:v]alphamerge[pix_alpha];` +
-          `[base][pix_alpha]overlay=0:0:shortest=1[v];` +
-          `[2:a]apad[a]`,
-          '-map', '[v]', '-map', '[a]', '-t', String(segDur),
-          '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', segPath,
-        ]);
-      } else {
-        await run(ffmpegPath, [
-          '-y', '-loglevel', 'error',
-          '-stream_loop', '-1', '-i', scenes[i].video,
-          '-i', mixedAudioPath,
-          '-filter_complex',
-          `[0:v]${speedFilter}scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS}[v];[1:a]apad[a]`,
-          '-map', '[v]', '-map', '[a]', '-t', String(segDur),
-          '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', segPath,
-        ]);
-      }
+      await run(ffmpegPath, [
+        '-y', '-loglevel', 'error',
+        '-stream_loop', '-1', '-i', scenes[i].video,
+        '-i', mixedAudioPath,
+        '-filter_complex',
+        `[0:v]${speedFilter}scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS}[v];[1:a]apad[a]`,
+        '-map', '[v]', '-map', '[a]', '-t', String(segDur),
+        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', segPath,
+      ]);
     } else {
       // 스마트폰 세로 사진 EXIF 회전 버그 방지 (Auto-Orient 사전 단일 프레임 정규화)
       let sceneImg = scenes[i].image;
@@ -712,20 +439,7 @@ async function buildProject(project, onProgress) {
           }
         }
 
-        // 3) AI 초상권 안심 보호 (얼굴 80% 모자이크 및 타겟 지정)
-        const targetPrompt = curScene.mosaicTarget || globalMosaicTarget || '';
-        const shouldMosaic = (curScene.mosaic === true) || (autoMosaic && curScene.mosaic !== false) || !!curScene.mosaicTarget;
-        if (shouldMosaic) {
-          try {
-            const mosaicImg = path.join(segDir, `mosaic_${n}.png`);
-            await applyAutoMosaic(sceneImg, mosaicImg, VW, VH, targetPrompt, apiKey);
-            if (fs.existsSync(mosaicImg)) {
-              sceneImg = mosaicImg;
-            }
-          } catch (err) {
-            console.warn('[AutoMosaic] Failed to process scene', n, err);
-          }
-        }
+
       }
 
       let vFilter = '';
@@ -780,14 +494,29 @@ async function buildProject(project, onProgress) {
   if (project.bgm && fs.existsSync(project.bgm)) {
     const totalDur = t;
     const mixed = path.join(workDir, 'mixed.mp4');
-    const bgmVol = typeof project.bgmVolume === 'number' ? project.bgmVolume : 0.35;
+    const bgmVol = typeof project.bgmVolume === 'number' ? Math.max(0.05, Math.min(1.0, project.bgmVolume)) : 0.45;
+    const voiceVol = typeof project.voiceVolume === 'number' ? Math.max(0.2, Math.min(2.0, project.voiceVolume)) : 1.0;
+    const duckingMode = project.ducking || 'auto';
     const fadeStart = Math.max(0, totalDur - 1.5).toFixed(2);
     try {
+      let filterComplex = '';
+      if (duckingMode === 'none') {
+        // 균일 믹싱: 더킹 없이 원본 말소리와 배경음악을 설정 비율대로 깔끔하게 결합
+        filterComplex = `[0:a]volume=${voiceVol.toFixed(2)}[mixv];` +
+          `[1:a]atrim=0:${totalDur.toFixed(2)},volume=${bgmVol.toFixed(2)},afade=t=out:st=${fadeStart}:d=1.5[bgmraw];` +
+          `[mixv][bgmraw]amix=inputs=2:duration=first:normalize=0[aout]`;
+      } else {
+        // 스마트 오토더킹: 말할 때 BGM 부드럽게 감소 (~10dB), 무음/쉼 구간에서 BGM이 풍성하게 올라옴 (normalize=0)
+        filterComplex = `[0:a]asplit=2[sc][v_orig];` +
+          `[v_orig]volume=${voiceVol.toFixed(2)}[mixv];` +
+          `[1:a]atrim=0:${totalDur.toFixed(2)},volume=${bgmVol.toFixed(2)},afade=t=out:st=${fadeStart}:d=1.5[bgmraw];` +
+          `[bgmraw][sc]sidechaincompress=threshold=0.08:ratio=3.0:attack=80:release=350[ducked_bgm];` +
+          `[mixv][ducked_bgm]amix=inputs=2:duration=first:normalize=0[aout]`;
+      }
       await run(ffmpegPath, [
         '-y', '-loglevel', 'error',
         '-i', joined, '-stream_loop', '-1', '-i', project.bgm,
-        '-filter_complex',
-        `[0:a]asplit=2[sc][mix];[mix]volume=1.4[mixv];[1:a]atrim=0:${totalDur.toFixed(2)},volume=${bgmVol},afade=t=out:st=${fadeStart}:d=1.5[bgmraw];[sc][bgmraw]sidechaincompress=threshold=0.025:ratio=7:attack=150:release=900[ducked];[mixv][ducked]amix=inputs=2:duration=first[aout]`,
+        '-filter_complex', filterComplex,
         '-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac', '-shortest', mixed,
       ]);
       burnSource = mixed;
@@ -1072,7 +801,6 @@ async function buildVideoProject(project, onProgress) {
     whisper,
     title = '',
     trimSilence = false,
-    autoMosaic = false,
     shortForm = 0,
     videoPaths = [],
     sfxPack = 'variety'
@@ -1167,13 +895,26 @@ async function buildVideoProject(project, onProgress) {
     try {
       const totalDur = segments.length > 0 ? segments[segments.length - 1].end : 30;
       const bgmMuxed = path.join(workDir, 'video_bgm.mp4');
-      const bgmVol = typeof project.bgmVolume === 'number' ? project.bgmVolume : 0.35;
+      const bgmVol = typeof project.bgmVolume === 'number' ? Math.max(0.05, Math.min(1.0, project.bgmVolume)) : 0.45;
+      const voiceVol = typeof project.voiceVolume === 'number' ? Math.max(0.2, Math.min(2.0, project.voiceVolume)) : 1.0;
+      const duckingMode = project.ducking || 'auto';
       const fadeStart = Math.max(0, totalDur - 1.5).toFixed(2);
+      let filterComplex = '';
+      if (duckingMode === 'none') {
+        filterComplex = `[0:a]volume=${voiceVol.toFixed(2)}[mixv];` +
+          `[1:a]atrim=0:${totalDur.toFixed(2)},volume=${bgmVol.toFixed(2)},afade=t=out:st=${fadeStart}:d=1.5[bgmraw];` +
+          `[mixv][bgmraw]amix=inputs=2:duration=first:normalize=0[aout]`;
+      } else {
+        filterComplex = `[0:a]asplit=2[sc][v_orig];` +
+          `[v_orig]volume=${voiceVol.toFixed(2)}[mixv];` +
+          `[1:a]atrim=0:${totalDur.toFixed(2)},volume=${bgmVol.toFixed(2)},afade=t=out:st=${fadeStart}:d=1.5[bgmraw];` +
+          `[bgmraw][sc]sidechaincompress=threshold=0.08:ratio=3.0:attack=80:release=350[ducked_bgm];` +
+          `[mixv][ducked_bgm]amix=inputs=2:duration=first:normalize=0[aout]`;
+      }
       await run(ffmpegPath, [
         '-y', '-loglevel', 'error',
         '-i', burnVideo, '-stream_loop', '-1', '-i', project.bgm,
-        '-filter_complex',
-        `[0:a]asplit=2[sc][mix];[mix]volume=1.3[mixv];[1:a]atrim=0:${totalDur.toFixed(2)},volume=${bgmVol},afade=t=out:st=${fadeStart}:d=1.5[bgmraw];[sc][bgmraw]sidechaincompress=threshold=0.03:ratio=6:attack=150:release=900[ducked];[mixv][ducked]amix=inputs=2:duration=first[aout]`,
+        '-filter_complex', filterComplex,
         '-map', '0:v', '-map', '[aout]', '-c:v', 'copy', '-c:a', 'aac', '-shortest', bgmMuxed
       ]);
       burnVideo = bgmMuxed;

@@ -93,9 +93,71 @@
     display: flex;
     gap: 14px;
     align-items: flex-start;
-    transition: border-color .15s ease;
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
   }
   .scene:hover { border-color: #35394d; }
+  .scene.selected {
+    border-color: #38bdf8;
+    background: #141f33;
+    box-shadow: 0 0 0 1px rgba(56,189,248,0.4), 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .batch-bar {
+    background: linear-gradient(135deg, #131722, #182030);
+    border: 1px solid #2d3748;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .batch-tool-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(15,23,42,0.6);
+    border: 1px solid #262f40;
+    border-radius: 6px;
+    padding: 3px 6px;
+  }
+  .batch-tool-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    white-space: nowrap;
+  }
+  .batch-sub-btn {
+    background: rgba(30,41,59,0.7);
+    border: 1px solid #334155;
+    color: #cbd5e1;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    padding: 3px 7px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .batch-sub-btn:hover {
+    background: #334155;
+    color: #ffffff;
+  }
+  .batch-act-btn {
+    background: #1e293b;
+    border: 1px solid #3b82f6;
+    color: #93c5fd;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .batch-act-btn:hover {
+    background: #2563eb;
+    color: #ffffff;
+  }
   .scene-thumb-col {
     display: flex;
     flex-direction: column;
@@ -453,6 +515,102 @@
     </div>
   </div>
   <div id="videoInfo" style="display:none; background:#191b22; border:1px solid #262934; border-radius:8px; padding:10px 14px; font-size:13px; color:#38bdf8;"></div>
+
+  <!-- BATCH OPERATIONS TOOLBAR -->
+  <div id="batchBar" class="batch-bar" style="display:none;">
+    <div class="batch-row">
+      <!-- Left: Selection Info & Quick Toggles -->
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:700; font-size:12.5px; color:#f8fafc; user-select:none;">
+          <input type="checkbox" id="selectAllChk" style="width:16px; height:16px; accent-color:#38bdf8; cursor:pointer;">
+          <span id="selectAllLabel">전체 선택</span>
+        </label>
+        <span id="selectedCountBadge" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.35); border-radius:12px; padding:2px 10px; font-size:11.5px; font-weight:700;">선택 0 / 총 0개</span>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <button type="button" id="selectOddBtn" class="batch-sub-btn" title="홀수 번호(1, 3, 5...) 장면만 선택">홀수</button>
+          <button type="button" id="selectEvenBtn" class="batch-sub-btn" title="짝수 번호(2, 4, 6...) 장면만 선택">짝수</button>
+          <button type="button" id="selectInvertBtn" class="batch-sub-btn" title="선택 반전">반전</button>
+          <button type="button" id="selectClearBtn" class="batch-sub-btn" title="선택 해제">해제</button>
+        </div>
+      </div>
+
+      <!-- Right: Batch Action Tools -->
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <!-- 1) Batch Motion -->
+        <div class="batch-tool-group">
+          <span class="batch-tool-title">🎬 모션:</span>
+          <select id="batchMotionSelect" style="background:#0f172a; border:1px solid #334155; border-radius:5px; color:#f8fafc; font-size:11.5px; padding:3px 6px;">
+            <option value="" disabled selected>모션 선택...</option>
+            <option value="auto">🎬 자동 순환</option>
+            <option value="zoomIn">🔍 줌인 (Zoom In)</option>
+            <option value="zoomOut">🔎 줌아웃 (Zoom Out)</option>
+            <option value="tiltDown">⬇️ 틸트 다운</option>
+            <option value="tiltUp">⬆️ 틸트 업</option>
+            <option value="fade">✨ 페이드</option>
+            <option value="none">⏹️ 정지 (Static)</option>
+          </select>
+          <button type="button" id="applyBatchMotionBtn" class="batch-act-btn">적용</button>
+        </div>
+
+        <!-- 2) Batch SFX -->
+        <div class="batch-tool-group">
+          <span class="batch-tool-title">🔔 효과음:</span>
+          <select id="batchSfxSelect" style="background:#0f172a; border:1px solid #334155; border-radius:5px; color:#f8fafc; font-size:11.5px; padding:3px 6px;">
+            <option value="" disabled selected>효과음 선택...</option>
+            <option value="auto">자동 매칭</option>
+            <option value="ding">띵 (ding)</option>
+            <option value="whoosh">휙 (whoosh)</option>
+            <option value="vineBoom">쿵 (vineBoom)</option>
+            <option value="mouseClick">딸깍 (click)</option>
+            <option value="pageTurn">촤락 (page)</option>
+            <option value="uiSwitch">탁 (switch)</option>
+            <option value="none">없음</option>
+          </select>
+          <button type="button" id="applyBatchSfxBtn" class="batch-act-btn">적용</button>
+        </div>
+
+        <!-- 3) Batch Subtitle / AI Script -->
+        <div class="batch-tool-group">
+          <span class="batch-tool-title">💬 자막/대본:</span>
+          <button type="button" id="batchAiScriptBtn" class="batch-act-btn" style="background:linear-gradient(135deg, #0284c7, #38bdf8); color:#ffffff; font-weight:700;" title="선택한 장면만 AI가 비전 분석하여 1줄 대본을 새로 작성합니다">✨ 선택 AI 작성</button>
+          <button type="button" id="batchTextApplyBtn" class="batch-act-btn" title="선택한 장면에 자막 내용을 직접 일괄 적용하거나 템플릿 대본을 넣습니다">대본 일괄 입력</button>
+        </div>
+
+        <!-- 5) Batch Delete -->
+        <button type="button" id="batchDeleteBtn" class="batch-act-btn" style="background:rgba(239,68,68,0.18); border-color:#ef4444; color:#f87171; font-weight:700;" title="선택한 장면들을 삭제합니다">🗑️ 선택 삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BATCH SUBTITLES MODAL -->
+  <div id="batchSubModal" style="display:none; pointer-events:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#171922; border:1px solid #38bdf8; border-radius:12px; width:92%; max-width:540px; padding:18px 20px; box-shadow:0 12px 36px rgba(0,0,0,0.6);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 id="batchSubModalTitle" style="margin:0; font-size:15px; color:#38bdf8; font-weight:700;">💬 선택 장면 자막/대본 일괄 적용</h3>
+        <button type="button" id="closeBatchSubModalBtn" style="background:transparent; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">✕</button>
+      </div>
+      <div id="batchSubModalDesc" style="font-size:12px; color:#cbd5e1; margin-bottom:12px;">
+        선택된 <b id="batchSubCount" style="color:#38bdf8;">0</b>개 장면에 적용할 자막 모드를 선택하세요:
+      </div>
+      <div style="display:flex; gap:12px; margin-bottom:10px; font-size:12px; flex-wrap:wrap;">
+        <label style="cursor:pointer; display:flex; align-items:center; gap:4px; color:#f8fafc;">
+          <input type="radio" name="batchSubMode" value="same" checked> 동일 텍스트 일괄 적용
+        </label>
+        <label style="cursor:pointer; display:flex; align-items:center; gap:4px; color:#f8fafc;">
+          <input type="radio" name="batchSubMode" value="multiline"> 줄바꿈 순차 적용 (1줄씩 배정)
+        </label>
+        <label style="cursor:pointer; display:flex; align-items:center; gap:4px; color:#f8fafc;">
+          <input type="radio" name="batchSubMode" value="template"> 넘버링 ({n} 자동 치환)
+        </label>
+      </div>
+      <textarea id="batchSubTextarea" rows="4" style="width:100%; box-sizing:border-box; background:#0f1118; border:1px solid #2d3748; border-radius:6px; color:#f8fafc; padding:8px 10px; font-size:12.5px; resize:vertical;" placeholder="적용할 자막 내용을 입력하세요.&#10;예: 필드 위의 멋진 샷!&#10;(줄바꿈 모드 시 1번째 줄은 1번째 선택 장면에, 2번째 줄은 2번째 선택 장면에 자동 배정됩니다)"></textarea>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;">
+        <button type="button" id="cancelBatchSubBtn" style="background:#262938; border:1px solid #334155; color:#cbd5e1; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px;">취소</button>
+        <button type="button" id="confirmBatchSubBtn" style="background:linear-gradient(135deg, #0284c7, #38bdf8); border:none; color:#ffffff; font-weight:700; padding:6px 18px; border-radius:6px; cursor:pointer; font-size:12px;">일괄 적용</button>
+      </div>
+    </div>
+  </div>
+
   <div id="scenes"><div class="empty">No scenes added yet.<br>Click <b>[📷 Add Photos]</b> or <b>[🎬 Add Videos]</b> in the toolbar to get started.</div></div>
 </main>
 <div id="advSettingsDrawer" class="adv-drawer" style="display:none;">
@@ -476,17 +634,23 @@
       </select>
     </div>
     <div class="adv-item">
+      <span id="advVoiceVolLabel" class="adv-label">Voice Volume</span>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <input type="range" id="voiceVolumeSlider" min="50" max="200" value="100" style="width:75px; height:4px; accent-color:#10b981; cursor:pointer;" title="말소리/영상 오디오 음량">
+        <span id="voiceVolumeLabel" style="font-size:11px; color:#10b981; font-weight:700; min-width:32px;">100%</span>
+      </div>
+    </div>
+    <div class="adv-item">
+      <span id="advDuckingLabel" class="adv-label">Auto Ducking</span>
+      <select id="duckingSelect" title="Audio Ducking Mode">
+        <option value="auto" selected>Auto Ducking (Lower on speech, Raise on pause)</option>
+        <option value="none">Uniform Mix (No Ducking)</option>
+      </select>
+    </div>
+    <div class="adv-item">
       <label style="cursor:pointer; display:flex; align-items:center; gap:5px;">
         <input type="checkbox" id="trimSilenceChk"> <span id="advSilenceLabel">Auto Cut Silence</span>
       </label>
-    </div>
-    <div class="adv-item">
-      <label style="cursor:pointer; display:flex; align-items:center; gap:5px; color:#38bdf8; font-weight:600;">
-        <input type="checkbox" id="autoMosaicChk"> <span id="advMosaicLabel">🛡️ AI 초상권 보호 (얼굴 80% 모자이크)</span>
-      </label>
-    </div>
-    <div class="adv-item" style="flex:1; max-width:260px;">
-      <input id="globalMosaicTargetInput" placeholder="🎯 타겟 지정 (예: 오른쪽 2명만, 번호판)" style="width:100%; font-size:11.5px; padding:4px 8px; border-radius:4px; border:1px solid #334155; background:#0f172a; color:#f8fafc;" title="자연어로 모자이크 대상을 지정합니다. 비워두면 모든 얼굴을 80% 모자이크합니다.">
     </div>
   </div>
 </div>
@@ -497,27 +661,27 @@
       <option value="16:9">🖥️ 16:9 Landscape (YouTube)</option>
       <option value="1:1">⏹️ 1:1 Square (Feed)</option>
     </select>
-    <select id="bgmSelect" title="Select BGM" style="max-width: 235px;">
-      <option value="03_piano_forest" selected>🌿 [Healing] Forest Lullabye Piano</option>
-      <option value="11_harmonica_porchblues">🌾 [Folk] Porch Blues Guitar & Harmonica</option>
-      <option value="12_sad_heartbreaking">💧 [Emotional] Heartbreaking Strings & Piano</option>
-      <option value="04_acoustic_spring">☀️ [Upbeat] Spring In My Step Acoustic</option>
-      <option value="14_acoustic_carefree">🎸 [Cheerful] Carefree Acoustic & Ukulele</option>
-      <option value="15_guitar_easylemon">☕ [Acoustic] Easy Lemon Chill Guitar</option>
-      <option value="13_dance_monster">🪩 [Dance] Dance Monster Pop Beats</option>
-      <option value="06_hype_theitch">🎤 [Vocal] Energetic Rap & Pop (NEFFEX)</option>
-      <option value="01_lofi_kurt">🎧 [Lofi] Trendy Chill Lofi (Kurt)</option>
-      <option value="05_pop_littlefish">🎶 [Pop] Daily Upbeat Pop (Little Fish)</option>
-      <option value="02_synth_violet">🌆 [Synthwave] Neon Retro Synth (Violet)</option>
-      <option value="07_rock_elevators">⚡ [Rock] Dynamic Energy Rock</option>
-      <option value="09_viral_monkeys">🐒 [Comedy] Viral Shorts Comedy (#1)</option>
-      <option value="08_comic_sneakysnitch">🕵️ [Mystery] Sneaky Snitch Funny Theme</option>
-      <option value="10_playful_duck">🦆 [Playful] Fluffing a Duck Quirky Theme</option>
+    <select id="bgmSelect" title="Select BGM" style="max-width: 235px; font-size: 12px; background: #161922; border: 1px solid #282c3f; color: #f1f5f9; border-radius: 6px; padding: 7px 10px; cursor: pointer;">
+      <option value="01_piano_forest" selected>🌿 [Healing] Forest Calm Piano</option>
+      <option value="02_acoustic_spring">☀️ [Upbeat] Happy Whistling Ukulele</option>
+      <option value="03_guitar_gentle">☕ [Acoustic] Gentle City Sunshine</option>
+      <option value="04_lofi_chill">🎧 [Lofi] Trendy Chill Beat</option>
+      <option value="05_comic_sneakysnitch">🕵️ [Mystery] Sneaky Attic Secrets</option>
+      <option value="06_viral_comedy">🐒 [Comedy] Viral Shorts Ballet</option>
+      <option value="07_rock_energy">⚡ [Rock] Dynamic Dark Rock</option>
       <option value="none">🔇 No Background Music</option>
       <option value="custom">📁 Load Music from Computer...</option>
     </select>
+    <span id="customBgmBadge" style="display:none; align-items:center; gap:5px; font-size: 11px; color: #38bdf8; background: #0f172a; border: 1px solid #0284c7; padding: 4px 8px; border-radius: 6px; max-width: 140px;">
+      <span id="customBgmLabel" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+      <button id="clearBgmBtn" type="button" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:11px; padding:0 2px;" title="음악 해제">✕</button>
+    </span>
     <button id="bgmPreviewBtn" title="Play 10s preview of selected BGM" style="padding: 7px 10px; font-size: 12px; background: #1f2230; border: 1px solid #2f3348; color: #e2e8f0; border-radius: 6px; cursor: pointer;">▶️</button>
-    <span id="customBgmLabel" style="display:none; font-size: 11px; color: #f59e0b; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+    <div class="bgm-vol-group" style="display:inline-flex; align-items:center; gap:5px; margin-left:2px; background:#161922; border:1px solid #282c3f; border-radius:6px; padding:4px 8px;" title="배경음악 음량 조절 (슬라이더로 조절하며 미리듣기 가능)">
+      <span style="font-size:11px; color:#cbd5e1;">🎵</span>
+      <input type="range" id="bgmVolumeSlider" min="0" max="100" value="45" style="width:55px; height:4px; accent-color:#38bdf8; cursor:pointer;" title="배경음악 볼륨">
+      <span id="bgmVolumeLabel" style="font-size:11px; color:#38bdf8; font-weight:700; min-width:28px;">45%</span>
+    </div>
     <button id="toggleAdvBtn" type="button" style="padding: 7px 11px; font-size: 12px; background: transparent; border: 1px solid #2f3348; color: #94a3b8; border-radius: 6px; cursor: pointer;">⚙️ Advanced ▾</button>
   </div>
   <div id="status" class="footer-center">Add photos or videos to get started.</div>
@@ -528,6 +692,9 @@
 </footer>
 
 <script>
+  let currentLang = localStorage.getItem('vas_lang') || 'en';
+  let lastCheckedIdx = null;
+
   const scenesEl = document.getElementById('scenes');
   const buildBtn = document.getElementById('buildBtn');
   const statusEl = document.getElementById('status');
@@ -598,7 +765,7 @@
       const isVideo = scene.type === 'video' || !!scene.video;
       const isBg = scene.image && scene.image.startsWith('bg:');
       const div = document.createElement('div');
-      div.className = 'scene';
+      div.className = `scene ${scene.selected ? 'selected' : ''}`;
       div.innerHTML = `
         <div class="scene-thumb-col">
           <div class="scene-thumb" data-thumb="${i}" title="${isEn ? 'Click to replace with local photo or video' : '클릭하여 내 사진/영상으로 교체'}">
@@ -610,12 +777,14 @@
           </div>
           <div class="thumb-btns">
             <button class="action-btn change-img-btn" data-ci="${i}" title="${isEn ? 'Replace with local photo or video' : '내 컴퓨터의 사진 또는 영상으로 교체'}">${isEn ? '🔄 Replace Media' : '🔄 미디어 교체'}</button>
-            <button type="button" class="action-btn scene-mosaic-btn" data-mosaic-btn="${i}" style="margin-top:3px; border:1px solid ${scene.mosaic ? '#38bdf8' : '#334155'}; background:${scene.mosaic ? 'rgba(56,189,248,0.22)' : 'rgba(30,41,59,0.5)'}; color:${scene.mosaic ? '#38bdf8' : '#94a3b8'}; font-weight:700;" title="${isEn ? 'Toggle Privacy Face Mosaic (80% face area)' : '얼굴 80% 모자이크 (초상권 보호) 켜기/끄기'}">${scene.mosaic ? (isEn ? '🛡️ Mosaic ON' : '🛡️ 모자이크 ON') : (isEn ? '🛡️ Mosaic OFF' : '🛡️ 모자이크 OFF')}</button>
           </div>
         </div>
         <div class="body">
           <div class="row-top">
-            <span class="num">${isEn ? `Scene ${i + 1}` : `장면 ${i + 1}`}</span>
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; margin-right:4px;" title="${isEn ? 'Select this scene for batch actions' : '일괄 작업을 위해 이 장면을 선택합니다'}">
+              <input type="checkbox" class="scene-select-chk" data-chk="${i}" ${scene.selected ? 'checked' : ''} style="width:16px; height:16px; accent-color:#38bdf8; cursor:pointer;">
+              <span class="num">${isEn ? `Scene ${i + 1}` : `장면 ${i + 1}`}</span>
+            </label>
             ${scene.customAudio
               ? `<span style="background:rgba(244,63,94,0.2); color:#fb7185; border:1px solid rgba(244,63,94,0.45); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:700;">${isEn ? '🎤 My Voice Dubbed' : '🎤 내 목소리 직접 녹음'}</span>`
               : (scene.originalVoice
@@ -661,22 +830,28 @@
               <option value="none" ${scene.sfx === 'none' ? 'selected' : ''}>${isEn ? 'No SFX' : '효과음 없음'}</option>
             </select>
             <button class="sfx-preview-btn" data-psfx="${i}" style="padding:4px 8px; font-size:11px;">🔊</button>
-            <div style="display:flex; align-items:center; gap:6px; width:100%; margin-top:4px;">
-              <span style="font-size:11px; color:#38bdf8; font-weight:700; white-space:nowrap;">🎯 ${isEn ? 'Target:' : '타겟 지정:'}</span>
-              <input class="mosaic-target-input" data-idx="${i}" placeholder="${isEn ? 'e.g. 2 people on right / license plates / background passersby' : '예: 오른쪽 2명만 / 차량 번호판 / 뒤에 지나가는 행인들'}" value="${scene.mosaicTarget || ''}" style="flex:1; min-width:160px; font-size:11px; padding:3px 8px; border-radius:4px; border:1px solid #334155; background:#0f172a; color:#f8fafc;" title="자연어로 모자이크 대상을 지정합니다.">
-            </div>
           </div>
         </div>`;
       scenesEl.appendChild(div);
     });
 
-    scenesEl.querySelectorAll('input.mosaic-target-input').forEach((inp) => inp.addEventListener('input', (e) => {
-      const idx = +e.target.dataset.idx;
-      if (scenes[idx]) {
-        scenes[idx].mosaicTarget = e.target.value;
-        if (e.target.value.trim()) {
-          scenes[idx].mosaic = true;
+    scenesEl.querySelectorAll('.scene-select-chk').forEach((chk) => chk.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = +chk.dataset.chk;
+      const isChecked = chk.checked;
+      scenes[idx].selected = isChecked;
+
+      if (e.shiftKey && lastCheckedIdx !== null && lastCheckedIdx !== idx) {
+        const [start, end] = [Math.min(lastCheckedIdx, idx), Math.max(lastCheckedIdx, idx)];
+        for (let k = start; k <= end; k++) {
+          if (scenes[k]) scenes[k].selected = isChecked;
         }
+        render();
+      } else {
+        lastCheckedIdx = idx;
+        const parentScene = chk.closest('.scene');
+        if (parentScene) parentScene.classList.toggle('selected', isChecked);
+        updateBatchBar();
       }
     }));
 
@@ -691,15 +866,6 @@
       const kind = curSfx === 'auto' ? 'whoosh' : curSfx;
       const uri = await window.agent.previewSfx(kind);
       playAudioPreview(uri);
-    }));
-
-    scenesEl.querySelectorAll('.scene-mosaic-btn').forEach((btn) => btn.addEventListener('click', (e) => {
-      const idx = +e.currentTarget.dataset.mosaicBtn;
-      if (scenes[idx]) {
-        scenes[idx].mosaic = !scenes[idx].mosaic;
-        render();
-        sync();
-      }
     }));
 
     scenesEl.querySelectorAll('.scene-adv-toggle').forEach((toggle) => toggle.addEventListener('click', (e) => {
@@ -913,6 +1079,7 @@
 
     scenesEl.querySelectorAll('.remove').forEach((btn) => btn.addEventListener('click', (e) => { scenes.splice(+e.target.dataset.r, 1); render(); sync(); }));
     sync();
+    updateBatchBar();
   }
 
   let activeMediaRecorder = null;
@@ -942,6 +1109,248 @@
     }
   }
 
+  function updateBatchBar() {
+    const bar = document.getElementById('batchBar');
+    if (!bar) return;
+    const isEn = currentLang === 'en';
+    if (!scenes.length) {
+      bar.style.display = 'none';
+      return;
+    }
+    bar.style.display = 'flex';
+    const selCount = scenes.filter((s) => s.selected).length;
+    const badge = document.getElementById('selectedCountBadge');
+    if (badge) {
+      badge.textContent = isEn
+        ? `Selected ${selCount} / ${scenes.length}`
+        : `선택 ${selCount}개 / 총 ${scenes.length}개`;
+      badge.style.color = selCount > 0 ? '#38bdf8' : '#94a3b8';
+      badge.style.borderColor = selCount > 0 ? 'rgba(56,189,248,0.45)' : 'rgba(148,163,184,0.2)';
+      badge.style.background = selCount > 0 ? 'rgba(56,189,248,0.18)' : 'rgba(148,163,184,0.08)';
+    }
+    const allChk = document.getElementById('selectAllChk');
+    if (allChk) {
+      allChk.checked = selCount > 0 && selCount === scenes.length;
+      allChk.indeterminate = selCount > 0 && selCount < scenes.length;
+    }
+  }
+
+  function initBatchToolbar() {
+    const isEn = currentLang === 'en';
+
+    // 1) Selection controls
+    document.getElementById('selectAllChk').addEventListener('change', (e) => {
+      const isChecked = e.target.checked;
+      scenes.forEach((s) => { s.selected = isChecked; });
+      render();
+    });
+
+    document.getElementById('selectOddBtn').addEventListener('click', () => {
+      scenes.forEach((s, idx) => { s.selected = (idx % 2 === 0); });
+      render();
+    });
+
+    document.getElementById('selectEvenBtn').addEventListener('click', () => {
+      scenes.forEach((s, idx) => { s.selected = (idx % 2 === 1); });
+      render();
+    });
+
+    document.getElementById('selectInvertBtn').addEventListener('click', () => {
+      scenes.forEach((s) => { s.selected = !s.selected; });
+      render();
+    });
+
+    document.getElementById('selectClearBtn').addEventListener('click', () => {
+      scenes.forEach((s) => { s.selected = false; });
+      render();
+    });
+
+    // 2) Batch Motion
+    document.getElementById('applyBatchMotionBtn').addEventListener('click', () => {
+      const isEn = currentLang === 'en';
+      const selVal = document.getElementById('batchMotionSelect').value;
+      if (!selVal) {
+        alert(isEn ? 'Please choose a motion effect first.' : '먼저 적용할 모션 효과를 선택해 주세요.');
+        return;
+      }
+      const selected = scenes.filter((s) => s.selected);
+      if (!selected.length) {
+        alert(isEn ? 'Please select at least one scene.' : '적용할 장면을 하나 이상 선택해 주세요.');
+        return;
+      }
+      selected.forEach((s) => { s.motion = selVal; });
+      render();
+      sync();
+      statusEl.textContent = isEn
+        ? `✨ Applied '${selVal}' motion to ${selected.length} selected scenes.`
+        : `✨ 선택한 ${selected.length}개 장면에 '${getMotionLabel(selVal)}' 모션을 일괄 적용했습니다.`;
+    });
+
+    // 3) Batch SFX
+    document.getElementById('applyBatchSfxBtn').addEventListener('click', () => {
+      const isEn = currentLang === 'en';
+      const selVal = document.getElementById('batchSfxSelect').value;
+      if (!selVal) {
+        alert(isEn ? 'Please choose a sound effect first.' : '먼저 적용할 효과음을 선택해 주세요.');
+        return;
+      }
+      const selected = scenes.filter((s) => s.selected);
+      if (!selected.length) {
+        alert(isEn ? 'Please select at least one scene.' : '적용할 장면을 하나 이상 선택해 주세요.');
+        return;
+      }
+      selected.forEach((s) => { s.sfx = selVal; });
+      render();
+      sync();
+      statusEl.textContent = isEn
+        ? `🔔 Applied '${selVal}' SFX to ${selected.length} selected scenes.`
+        : `🔔 선택한 ${selected.length}개 장면에 '${selVal}' 효과음을 일괄 적용했습니다.`;
+    });
+
+    // 4) Batch Subtitle / AI Script
+    const subModal = document.getElementById('batchSubModal');
+    document.getElementById('batchTextApplyBtn').addEventListener('click', () => {
+      const isEn = currentLang === 'en';
+      const selected = scenes.filter((s) => s.selected);
+      if (!selected.length) {
+        alert(isEn ? 'Please select at least one scene.' : '적용할 장면을 하나 이상 선택해 주세요.');
+        return;
+      }
+      document.getElementById('batchSubCount').textContent = selected.length;
+      subModal.style.display = 'flex';
+      subModal.style.pointerEvents = 'auto';
+      document.getElementById('batchSubTextarea').focus();
+    });
+
+    const hideSubModal = () => {
+      subModal.style.display = 'none';
+      subModal.style.pointerEvents = 'none';
+    };
+    document.getElementById('closeBatchSubModalBtn').addEventListener('click', hideSubModal);
+    document.getElementById('cancelBatchSubBtn').addEventListener('click', hideSubModal);
+    document.getElementById('confirmBatchSubBtn').addEventListener('click', () => {
+      const isEn = currentLang === 'en';
+      const selected = scenes.filter((s) => s.selected);
+      const rawText = document.getElementById('batchSubTextarea').value;
+      const mode = document.querySelector('input[name="batchSubMode"]:checked').value;
+
+      if (mode === 'same') {
+        const clean = rawText.replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+        selected.forEach((s) => {
+          s.narration = clean;
+          s.originalVoice = false;
+        });
+      } else if (mode === 'multiline') {
+        const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean);
+        selected.forEach((s, idx) => {
+          if (lines[idx] !== undefined) {
+            s.narration = lines[idx].replace(/[\[\]\{\}]/g, '').trim();
+            s.originalVoice = false;
+          }
+        });
+      } else if (mode === 'template') {
+        selected.forEach((s, idx) => {
+          const templated = rawText.replace(/\{n\}/gi, String(idx + 1)).replace(/[\[\]\{\}]/g, '').trim();
+          s.narration = templated;
+          s.originalVoice = false;
+        });
+      }
+      hideSubModal();
+      render();
+      sync();
+      statusEl.textContent = isEn
+        ? `💬 Subtitle text applied to ${selected.length} selected scenes.`
+        : `💬 선택한 ${selected.length}개 장면에 자막 대본을 일괄 적용했습니다.`;
+    });
+
+    // Batch AI Script Generation (선택한 장면만 AI 맞춤 분석 및 대본 작성)
+    document.getElementById('batchAiScriptBtn').addEventListener('click', async () => {
+      const isEn = currentLang === 'en';
+      const selected = scenes.filter((s) => s.selected);
+      if (!selected.length) {
+        alert(isEn ? 'Please select at least one scene.' : '적용할 장면을 하나 이상 선택해 주세요.');
+        return;
+      }
+      const btn = document.getElementById('batchAiScriptBtn');
+      btn.disabled = true;
+      btn.textContent = isEn ? '⏳ Analyzing...' : '⏳ AI 분석 중...';
+      statusEl.textContent = isEn
+        ? `✨ AI is analyzing visual frames of ${selected.length} selected scenes...`
+        : `✨ 선택한 ${selected.length}개 장면의 화면을 AI가 정밀 분석하여 맞춤 대본을 작성 중입니다...`;
+
+      selected.forEach((s) => {
+        if (!s.customAudio) {
+          s.originalVoice = false;
+          s.isGenerating = true;
+        }
+      });
+      render();
+
+      try {
+        const targetIndices = [];
+        const itemsToAnalyze = [];
+        scenes.forEach((s, idx) => {
+          if (s.selected && !s.customAudio) {
+            targetIndices.push(idx);
+            itemsToAnalyze.push({
+              image: s.image,
+              narration: '',
+              title: s.title || ''
+            });
+          }
+        });
+
+        if (itemsToAnalyze.length > 0) {
+          const drafts = await window.agent.analyze({scenes: itemsToAnalyze, lang: currentLang});
+          if (drafts && drafts.length) {
+            drafts.forEach((d, dIdx) => {
+              const sIdx = targetIndices[dIdx];
+              if (scenes[sIdx]) {
+                scenes[sIdx].narration = (d.narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+                scenes[sIdx].keyword = (d.keyword || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+                if (d.sfx) scenes[sIdx].sfx = d.sfx;
+              }
+            });
+          }
+        }
+        scenes.forEach((s) => { delete s.isGenerating; });
+        render();
+        sync();
+        statusEl.textContent = isEn
+          ? `✅ AI custom scripts generated for ${selected.length} selected scenes!`
+          : `✅ 선택한 ${selected.length}개 장면에 대한 AI 맞춤 대본 작성이 완료되었습니다!`;
+      } catch (err) {
+        scenes.forEach((s) => { delete s.isGenerating; });
+        render();
+        sync();
+        alert((isEn ? 'AI Script Error: ' : 'AI 대본 작성 오류: ') + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = isEn ? '✨ Select AI Script' : '✨ 선택 AI 작성';
+      }
+    });
+
+    // 6) Batch Delete
+    document.getElementById('batchDeleteBtn').addEventListener('click', () => {
+      const isEn = currentLang === 'en';
+      const selCount = scenes.filter((s) => s.selected).length;
+      if (!selCount) {
+        alert(isEn ? 'Please select scenes to delete.' : '삭제할 장면을 선택해 주세요.');
+        return;
+      }
+      if (!confirm(isEn ? `Are you sure you want to delete ${selCount} selected scenes?` : `선택한 ${selCount}개 장면을 정말 삭제하시겠습니까?`)) {
+        return;
+      }
+      scenes = scenes.filter((s) => !s.selected);
+      render();
+      sync();
+      statusEl.textContent = isEn
+        ? `🗑️ Deleted ${selCount} scenes.`
+        : `🗑️ 선택한 ${selCount}개 장면을 일괄 삭제했습니다.`;
+    });
+  }
+  initBatchToolbar();
+
   // 0. 새 프로젝트 만들기 (전체 초기화)
   document.getElementById('newBtn').addEventListener('click', () => {
     const isEn = currentLang === 'en';
@@ -959,8 +1368,8 @@
     document.getElementById('openBtn').style.display = 'none';
     stopBgmPreview();
     customBgmPath = null;
-    document.getElementById('bgmSelect').value = '03_piano_forest';
-    document.getElementById('customBgmLabel').style.display = 'none';
+    document.getElementById('bgmSelect').value = 'none';
+    if (document.getElementById('customBgmBadge')) document.getElementById('customBgmBadge').style.display = 'none';
     statusEl.className = '';
     statusEl.textContent = isEn
       ? 'New project ready. Click [Add Photos] or [Add Videos] to get started.'
@@ -1360,13 +1769,15 @@
     statusEl.textContent = label + (stage === 'transcribe' ? '' : ` (${cur}/${total})`);
   });
 
-  // BGM 미리듣기 및 커스텀 MP3 선택 로직
+  // BGM 미리듣기 및 커스텀 음원 선택 로직 (클린 & 세이프 모드)
   let customBgmPath = null;
   let currentBgmAudio = null;
   let bgmTimer = null;
   const bgmSelect = document.getElementById('bgmSelect');
   const bgmPreviewBtn = document.getElementById('bgmPreviewBtn');
+  const customBgmBadge = document.getElementById('customBgmBadge');
   const customBgmLabel = document.getElementById('customBgmLabel');
+  const clearBgmBtn = document.getElementById('clearBgmBtn');
 
   function stopBgmPreview() {
     if (currentBgmAudio) {
@@ -1382,6 +1793,20 @@
     bgmPreviewBtn.title = isEn ? 'Play 10s preview of selected BGM' : '선택한 BGM 10초 미리듣기';
   }
 
+  function clearCustomBgm() {
+    customBgmPath = null;
+    bgmSelect.value = 'none';
+    if (customBgmBadge) customBgmBadge.style.display = 'none';
+    stopBgmPreview();
+  }
+
+  if (clearBgmBtn) {
+    clearBgmBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearCustomBgm();
+    });
+  }
+
   bgmSelect.addEventListener('change', async () => {
     stopBgmPreview();
     if (bgmSelect.value === 'custom') {
@@ -1389,18 +1814,38 @@
       if (picked && picked.length) {
         customBgmPath = picked[0];
         const filename = customBgmPath.split(/[/\\]/).pop();
-        customBgmLabel.textContent = `📁 ${filename}`;
-        customBgmLabel.style.display = '';
-        customBgmLabel.title = customBgmPath;
+        customBgmLabel.textContent = `🎵 ${filename}`;
+        if (customBgmBadge) {
+          customBgmBadge.style.display = 'inline-flex';
+          customBgmBadge.title = customBgmPath;
+        }
       } else {
-        bgmSelect.value = '01_lofi_kurt';
-        customBgmPath = null;
-        customBgmLabel.style.display = 'none';
+        if (!customBgmPath) {
+          bgmSelect.value = 'none';
+          if (customBgmBadge) customBgmBadge.style.display = 'none';
+        }
       }
     } else {
       customBgmPath = null;
-      customBgmLabel.style.display = 'none';
+      if (customBgmBadge) customBgmBadge.style.display = 'none';
     }
+  });
+
+  const bgmVolumeSlider = document.getElementById('bgmVolumeSlider');
+  const bgmVolumeLabel = document.getElementById('bgmVolumeLabel');
+  const voiceVolumeSlider = document.getElementById('voiceVolumeSlider');
+  const voiceVolumeLabel = document.getElementById('voiceVolumeLabel');
+
+  bgmVolumeSlider.addEventListener('input', (e) => {
+    const val = e.target.value;
+    bgmVolumeLabel.textContent = `${val}%`;
+    if (currentBgmAudio) {
+      currentBgmAudio.volume = Math.max(0.05, Math.min(1.0, val / 100));
+    }
+  });
+
+  voiceVolumeSlider.addEventListener('input', (e) => {
+    voiceVolumeLabel.textContent = `${e.target.value}%`;
   });
 
   bgmPreviewBtn.addEventListener('click', async () => {
@@ -1410,21 +1855,17 @@
     }
     const val = bgmSelect.value;
     const isEn = currentLang === 'en';
-    if (val === 'none') {
-      alert(isEn ? 'No BGM selected. Please select a track first.' : '배경음악 없음 상태입니다. 먼저 곡을 선택해주세요.');
+    const targetBgm = (val === 'custom' && customBgmPath) ? customBgmPath : (val !== 'none' ? val : null);
+    if (!targetBgm) {
+      alert(isEn ? 'No music loaded. Please select [Load Music (MP3, WAV, M4A)...] first.' : '불러온 음악이 없습니다. 먼저 [📁 내 음악 불러오기]를 눌러 소장하신 음악 파일을 선택해 주세요.');
       return;
     }
     bgmPreviewBtn.textContent = '⏳';
     try {
-      let src = null;
-      if (val === 'custom' && customBgmPath) {
-        src = 'file://' + encodeURI(customBgmPath);
-      } else {
-        src = await window.agent.previewBgm(val);
-      }
+      const src = await window.agent.previewBgm(targetBgm);
       if (!src) throw new Error(isEn ? 'Failed to load audio file.' : '음원 파일을 불러올 수 없습니다.');
       const audio = new Audio(src);
-      audio.volume = 0.55;
+      audio.volume = Math.max(0.05, Math.min(1.0, (Number(bgmVolumeSlider.value) || 45) / 100));
       await audio.play();
       currentBgmAudio = audio;
       bgmPreviewBtn.textContent = '⏹️';
@@ -1464,16 +1905,6 @@
   showTitleChk.addEventListener('change', updateTitleSubState);
   showSubtitlesChk.addEventListener('change', updateTitleSubState);
   updateTitleSubState();
-
-  const autoMosaicEl = document.getElementById('autoMosaicChk');
-  if (autoMosaicEl) {
-    autoMosaicEl.addEventListener('change', (e) => {
-      const isChecked = e.target.checked;
-      scenes.forEach((s) => { s.mosaic = isChecked; });
-      render();
-      sync();
-    });
-  }
 
   // 빌드 실행
   buildBtn.addEventListener('click', async () => {
@@ -1530,8 +1961,6 @@
           type: s.type,
           narration: (s.narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim(),
           motion: s.motion || 'kenburns',
-          mosaic: !!s.mosaic,
-          mosaicTarget: s.mosaicTarget || '',
           sfx: s.sfx,
           tag: '',
           originalVoice: !!s.originalVoice,
@@ -1544,11 +1973,11 @@
         shadowStyle,
         sfxPack,
         bgm: bgmVal,
-        bgmVolume: 0.35,
+        bgmVolume: (Number(document.getElementById('bgmVolumeSlider')?.value) || 45) / 100,
+        voiceVolume: (Number(document.getElementById('voiceVolumeSlider')?.value) || 100) / 100,
+        ducking: document.getElementById('duckingSelect')?.value || 'auto',
         aspect: document.getElementById('aspectSelect').value,
         trimSilence: document.getElementById('trimSilenceChk').checked,
-        autoMosaic: document.getElementById('autoMosaicChk') ? document.getElementById('autoMosaicChk').checked : false,
-        globalMosaicTarget: document.getElementById('globalMosaicTargetInput') ? document.getElementById('globalMosaicTargetInput').value.trim() : '',
         shortForm: document.getElementById('shortFormSelect').value,
       });
       lastOutput = result.outputPath;
@@ -1565,8 +1994,7 @@
     buildBtn.disabled = false;
   });
 
-  // Full Bilingual (한국어 / English) i18n Engine
-  let currentLang = localStorage.getItem('vas_lang') || 'en';
+  // Full Bilingual (한국어 / English) i18n Engine (currentLang declared at top)
 
   const I18N_OPTIONS = {
     titleSize: {
@@ -1685,40 +2113,24 @@
     },
     bgm: {
       ko: [
-        {value: '03_piano_forest', text: '🌿 [위로] 포레스트 힐링 피아노'},
-        {value: '11_harmonica_porchblues', text: '🌾 [위로/하모니카] 포크 기타 & 하모니카'},
-        {value: '12_sad_heartbreaking', text: '💧 [애잔한] 서정적인 슬픈 피아노 & 스트링'},
-        {value: '04_acoustic_spring', text: '☀️ [경쾌] 경쾌한 통기타 & 휘파람'},
-        {value: '14_acoustic_carefree', text: '🎸 [경쾌/기타] 신나는 어쿠스틱 기타 & 우쿨렐레'},
-        {value: '15_guitar_easylemon', text: '☕ [기타 연주] 차분하고 부드러운 감성 기타'},
-        {value: '13_dance_monster', text: '🪩 [댄스] 신나는 팝 댄스 & 클럽 비트'},
-        {value: '06_hype_theitch', text: '🎤 [보컬/가사] 신나는 영어 랩&보컬 팝 (NEFFEX)'},
-        {value: '01_lofi_kurt', text: '🎧 [감성] 트렌디 감성 로파이 (Kurt)'},
-        {value: '05_pop_littlefish', text: '🎶 [팝] 산뜻한 데일리 팝 비트'},
-        {value: '02_synth_violet', text: '🌆 [신스] 네온 레트로 신스웨이브'},
-        {value: '07_rock_elevators', text: '⚡ [록] 다이내믹 에너지 록'},
-        {value: '09_viral_monkeys', text: '🐒 [코믹] 숏츠 1위 바이럴 코미디'},
-        {value: '08_comic_sneakysnitch', text: '🕵️ [코믹] 살금살금 꿀잼 미스터리'},
-        {value: '10_playful_duck', text: '🦆 [코믹] 엉뚱발랄 귀여운 오리'},
+        {value: '01_piano_forest', text: '🌿 [위로] 포레스트 힐링 피아노'},
+        {value: '02_acoustic_spring', text: '☀️ [경쾌] 경쾌한 통기타 & 우쿨렐레'},
+        {value: '03_guitar_gentle', text: '☕ [기타] 차분하고 부드러운 감성 기타'},
+        {value: '04_lofi_chill', text: '🎧 [감성] 트렌디 감성 로파이'},
+        {value: '05_comic_sneakysnitch', text: '🕵️ [미스터리] 살금살금 꿀잼 미스터리'},
+        {value: '06_viral_comedy', text: '🐒 [코믹] 숏츠 1위 바이럴 코미디'},
+        {value: '07_rock_energy', text: '⚡ [록] 다이내믹 에너지 록'},
         {value: 'none', text: '🔇 배경음악 없음'},
         {value: 'custom', text: '📁 내 컴퓨터 음악 불러오기...'}
       ],
       en: [
-        {value: '03_piano_forest', text: '🌿 [Healing] Forest Lullabye Piano'},
-        {value: '11_harmonica_porchblues', text: '🌾 [Folk] Porch Blues Guitar & Harmonica'},
-        {value: '12_sad_heartbreaking', text: '💧 [Emotional] Heartbreaking Strings & Piano'},
-        {value: '04_acoustic_spring', text: '☀️ [Upbeat] Spring In My Step Acoustic'},
-        {value: '14_acoustic_carefree', text: '🎸 [Cheerful] Carefree Acoustic & Ukulele'},
-        {value: '15_guitar_easylemon', text: '☕ [Acoustic] Easy Lemon Chill Guitar'},
-        {value: '13_dance_monster', text: '🪩 [Dance] Dance Monster Pop Beats'},
-        {value: '06_hype_theitch', text: '🎤 [Vocal] Energetic Rap & Pop (NEFFEX)'},
-        {value: '01_lofi_kurt', text: '🎧 [Lofi] Trendy Chill Lofi (Kurt)'},
-        {value: '05_pop_littlefish', text: '🎶 [Pop] Daily Upbeat Pop (Little Fish)'},
-        {value: '02_synth_violet', text: '🌆 [Synthwave] Neon Retro Synth (Violet)'},
-        {value: '07_rock_elevators', text: '⚡ [Rock] Dynamic Energy Rock'},
-        {value: '09_viral_monkeys', text: '🐒 [Comedy] Viral Shorts Comedy (#1)'},
-        {value: '08_comic_sneakysnitch', text: '🕵️ [Mystery] Sneaky Snitch Funny Theme'},
-        {value: '10_playful_duck', text: '🦆 [Playful] Fluffing a Duck Quirky Theme'},
+        {value: '01_piano_forest', text: '🌿 [Healing] Forest Calm Piano'},
+        {value: '02_acoustic_spring', text: '☀️ [Upbeat] Happy Whistling Ukulele'},
+        {value: '03_guitar_gentle', text: '☕ [Acoustic] Gentle City Sunshine'},
+        {value: '04_lofi_chill', text: '🎧 [Lofi] Trendy Chill Beat'},
+        {value: '05_comic_sneakysnitch', text: '🕵️ [Mystery] Sneaky Attic Secrets'},
+        {value: '06_viral_comedy', text: '🐒 [Comedy] Viral Shorts Ballet'},
+        {value: '07_rock_energy', text: '⚡ [Rock] Dynamic Dark Rock'},
         {value: 'none', text: '🔇 No Background Music'},
         {value: 'custom', text: '📁 Load Music from Computer...'}
       ]
@@ -1749,6 +2161,16 @@
         {value: '15', text: '15s Shorts'},
         {value: '30', text: '30s Shorts'},
         {value: '60', text: '60s Shorts'}
+      ]
+    },
+    ducking: {
+      ko: [
+        {value: 'auto', text: '🎚️ 스마트 오토더킹 (말할 때 BGM 낮춤, 무음 시 올림)'},
+        {value: 'none', text: '🎚️ 균일 믹싱 (더킹 없이 고정 볼륨)'}
+      ],
+      en: [
+        {value: 'auto', text: '🎚️ Smart Auto-Ducking (Lower on speech, raise on pause)'},
+        {value: 'none', text: '🎚️ Uniform Mix (No Ducking)'}
       ]
     }
   };
@@ -1925,16 +2347,19 @@
     applySelectOptions(document.getElementById('bgmSelect'), I18N_OPTIONS.bgm[lang]);
     applySelectOptions(document.getElementById('sfxPackSelect'), I18N_OPTIONS.sfxPack[lang]);
     applySelectOptions(document.getElementById('shortFormSelect'), I18N_OPTIONS.shortForm[lang]);
+    applySelectOptions(document.getElementById('duckingSelect'), I18N_OPTIONS.ducking[lang]);
 
     // Advanced Drawer labels
     const advSfxLabel = document.getElementById('advSfxLabel');
     if (advSfxLabel) advSfxLabel.textContent = isEn ? 'SFX Pack' : '효과음 팩';
     const advDurLabel = document.getElementById('advDurLabel');
     if (advDurLabel) advDurLabel.textContent = isEn ? 'Video Duration' : '영상 길이';
+    const advVoiceVolLabel = document.getElementById('advVoiceVolLabel');
+    if (advVoiceVolLabel) advVoiceVolLabel.textContent = isEn ? 'Voice Volume' : '음성/말소리 볼륨';
+    const advDuckingLabel = document.getElementById('advDuckingLabel');
+    if (advDuckingLabel) advDuckingLabel.textContent = isEn ? 'Auto Ducking' : '스마트 오토더킹';
     const advSilenceLabel = document.getElementById('advSilenceLabel');
     if (advSilenceLabel) advSilenceLabel.textContent = isEn ? 'Auto Cut Silence' : '무음 구간 자동 컷';
-    const advMosaicLabel = document.getElementById('advMosaicLabel');
-    if (advMosaicLabel) advMosaicLabel.textContent = isEn ? '🛡️ AI Privacy Mosaic (80% Face Area)' : '🛡️ AI 초상권 보호 (얼굴 80% 모자이크)';
     const isDrawerHidden = advSettingsDrawer.style.display === 'none';
     toggleAdvBtn.textContent = isDrawerHidden
       ? (isEn ? '⚙️ Advanced ▾' : '⚙️ 상세 옵션 ▾')
@@ -1953,6 +2378,50 @@
 
     // Open button in footer
     openBtn.textContent = isEn ? '📁 Reveal in Folder' : '📁 폴더에서 보기';
+
+    // Batch Toolbar labels
+    const selectAllLabel = document.getElementById('selectAllLabel');
+    if (selectAllLabel) selectAllLabel.textContent = isEn ? 'Select All' : '전체 선택';
+    const selectOddBtn = document.getElementById('selectOddBtn');
+    if (selectOddBtn) { selectOddBtn.textContent = isEn ? 'Odd' : '홀수'; selectOddBtn.title = isEn ? 'Select odd numbered scenes' : '홀수 번호(1, 3, 5...) 장면만 선택'; }
+    const selectEvenBtn = document.getElementById('selectEvenBtn');
+    if (selectEvenBtn) { selectEvenBtn.textContent = isEn ? 'Even' : '짝수'; selectEvenBtn.title = isEn ? 'Select even numbered scenes' : '짝수 번호(2, 4, 6...) 장면만 선택'; }
+    const selectInvertBtn = document.getElementById('selectInvertBtn');
+    if (selectInvertBtn) { selectInvertBtn.textContent = isEn ? 'Invert' : '반전'; selectInvertBtn.title = isEn ? 'Invert selection' : '선택 반전'; }
+    const selectClearBtn = document.getElementById('selectClearBtn');
+    if (selectClearBtn) { selectClearBtn.textContent = isEn ? 'Clear' : '해제'; selectClearBtn.title = isEn ? 'Deselect all' : '선택 해제'; }
+
+    const batchMotionSelect = document.getElementById('batchMotionSelect');
+    if (batchMotionSelect) {
+      batchMotionSelect.options[0].text = isEn ? 'Motion Effect...' : '모션 선택...';
+      batchMotionSelect.options[1].text = isEn ? '🎬 Auto Cycle' : '🎬 자동 순환';
+      batchMotionSelect.options[2].text = isEn ? '🔍 Zoom In' : '🔍 줌인 (Zoom In)';
+      batchMotionSelect.options[3].text = isEn ? '🔎 Zoom Out' : '🔎 줌아웃 (Zoom Out)';
+      batchMotionSelect.options[4].text = isEn ? '⬇️ Tilt Down' : '⬇️ 틸트 다운';
+      batchMotionSelect.options[5].text = isEn ? '⬆️ Tilt Up' : '⬆️ 틸트 업';
+      batchMotionSelect.options[6].text = isEn ? '✨ Fade' : '✨ 페이드';
+      batchMotionSelect.options[7].text = isEn ? '⏹️ Static' : '⏹️ 정지 (Static)';
+    }
+
+    const batchSfxSelect = document.getElementById('batchSfxSelect');
+    if (batchSfxSelect) {
+      batchSfxSelect.options[0].text = isEn ? 'Sound Effect...' : '효과음 선택...';
+      batchSfxSelect.options[1].text = isEn ? 'Auto Match' : '자동 매칭';
+      batchSfxSelect.options[2].text = isEn ? 'Ding' : '띵 (ding)';
+      batchSfxSelect.options[3].text = isEn ? 'Whoosh' : '휙 (whoosh)';
+      batchSfxSelect.options[4].text = isEn ? 'Vine Boom' : '쿵 (vineBoom)';
+      batchSfxSelect.options[5].text = isEn ? 'Mouse Click' : '딸깍 (click)';
+      batchSfxSelect.options[6].text = isEn ? 'Page Turn' : '촤락 (page)';
+      batchSfxSelect.options[7].text = isEn ? 'UI Switch' : '탁 (switch)';
+      batchSfxSelect.options[8].text = isEn ? 'No SFX' : '없음';
+    }
+
+    const batchAiScriptBtn = document.getElementById('batchAiScriptBtn');
+    if (batchAiScriptBtn) batchAiScriptBtn.textContent = isEn ? '✨ Select AI Script' : '✨ 선택 AI 작성';
+    const batchTextApplyBtn = document.getElementById('batchTextApplyBtn');
+    if (batchTextApplyBtn) batchTextApplyBtn.textContent = isEn ? 'Batch Subtitle' : '대본 일괄 입력';
+    const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+    if (batchDeleteBtn) batchDeleteBtn.textContent = isEn ? '🗑️ Delete Selected' : '🗑️ 선택 삭제';
 
     render();
     sync();

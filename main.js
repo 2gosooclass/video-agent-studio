@@ -134,10 +134,10 @@ app.whenReady().then(() => {
         showSubtitles: payload.showSubtitles !== false,
         outputMode: payload.outputMode || 'both',
         bgm: resolveBgmPath(payload.bgm),
-        bgmVolume: Number(payload.bgmVolume) || 0.35,
+        bgmVolume: typeof payload.bgmVolume === 'number' ? payload.bgmVolume : 0.45,
+        voiceVolume: typeof payload.voiceVolume === 'number' ? payload.voiceVolume : 1.0,
+        ducking: payload.ducking || 'auto',
         sfxPack: payload.sfxPack || 'variety',
-        autoMosaic: !!payload.autoMosaic,
-        globalMosaicTarget: payload.globalMosaicTarget || '',
         apiKey: settings.apiKey || '',
         workDir,
         outputPath,
@@ -385,9 +385,10 @@ app.whenReady().then(() => {
         trimSilence: !!payload.trimSilence,
         shortForm: Number(payload.shortForm) || 0,
         bgm: resolveBgmPath(payload.bgm),
-        bgmVolume: Number(payload.bgmVolume) || 0.35,
+        bgmVolume: typeof payload.bgmVolume === 'number' ? payload.bgmVolume : 0.45,
+        voiceVolume: typeof payload.voiceVolume === 'number' ? payload.voiceVolume : 1.0,
+        ducking: payload.ducking || 'auto',
         sfxPack: payload.sfxPack || 'variety',
-        autoMosaic: !!payload.autoMosaic,
         workDir,
         outputPath,
         fontsDir,
@@ -489,9 +490,17 @@ app.whenReady().then(() => {
   ipcMain.handle('preview-bgm', async (event, bgmKey) => {
     const bgmPath = resolveBgmPath(bgmKey);
     if (bgmPath && fs.existsSync(bgmPath)) {
+      const ext = path.extname(bgmPath).toLowerCase();
+      let mime = 'audio/mpeg';
+      if (ext === '.wav') mime = 'audio/wav';
+      else if (ext === '.m4a' || ext === '.mp4') mime = 'audio/mp4';
+      else if (ext === '.ogg') mime = 'audio/ogg';
+      else if (ext === '.aac') mime = 'audio/aac';
+      else if (ext === '.flac') mime = 'audio/flac';
+
       const buf = fs.readFileSync(bgmPath);
-      const slice = buf.length > 2500000 ? buf.slice(0, 2500000) : buf;
-      return 'data:audio/mp3;base64,' + slice.toString('base64');
+      const slice = buf.length > 3500000 ? buf.slice(0, 3500000) : buf;
+      return `data:${mime};base64,` + slice.toString('base64');
     }
     return null;
   });

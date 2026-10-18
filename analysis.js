@@ -279,57 +279,5 @@ async function regenerateSceneImage({apiKey, narration, prompt, aspect = '9:16'}
   });
 }
 
-async function detectMosaicTargetsViaGemini({apiKey, model = 'gemini-2.5-flash', imagePath, prompt}) {
-  if (!apiKey || !imagePath || !fs.existsSync(imagePath) || !prompt) return [];
-  try {
-    const ext = path.extname(imagePath).toLowerCase();
-    const data = fs.readFileSync(imagePath).toString('base64');
-    const mimeType = MIME[ext] || 'image/jpeg';
+module.exports = {analyzeScenes, generateSceneImage, planSuperpowersProject, regenerateSceneImage};
 
-    const systemInstruction = [
-      'You are a high-precision computer vision spatial grounding model.',
-      `User privacy mosaic request: "${prompt}".`,
-      'Tasks:',
-      '1. Identify all people or target objects.',
-      '2. If the user asks for people by position or count (e.g. "맨마지막 인물 두명", "오른쪽 2명만", "남편 외 다른 사람", "가운데 사람"):',
-      '   - Count individuals strictly (from left to right in order).',
-      '   - If there are 5 people and user asked for the last 2 persons, select strictly the rightmost 2 individuals.',
-      '   - Return each person as an individual bounding box [ymin, xmin, ymax, xmax]. Do not group multiple people into a single box.',
-      '3. If the request is for car license plates, screens, or objects, return the exact object rectangle.',
-      '4. Output strictly a JSON array of objects in this format:',
-      '[{"box_2d": [ymin, xmin, ymax, xmax], "label": "description"}]',
-      'where ymin, xmin, ymax, xmax are normalized integers between 0 and 1000.',
-      'Return ONLY the JSON array without markdown formatting or other text.'
-    ].join(' ');
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            {text: systemInstruction},
-            {inline_data: {mime_type: mimeType, data}}
-          ]
-        }],
-        generationConfig: {
-          response_mime_type: 'application/json'
-        }
-      })
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return [];
-    const parsed = JSON.parse(text);
-    if (Array.isArray(parsed)) {
-      return parsed.map(item => item.box_2d).filter(b => Array.isArray(b) && b.length === 4);
-    }
-  } catch (err) {
-    console.warn('[detectMosaicTargetsViaGemini] error:', err);
-  }
-  return [];
-}
-
-module.exports = {analyzeScenes, generateSceneImage, planSuperpowersProject, regenerateSceneImage, detectMosaicTargetsViaGemini};
