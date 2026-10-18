@@ -31,8 +31,8 @@
     <img src="https://img.shields.io/badge/🍏_Direct_Download-macOS_Apple_Silicon_(740MB)-181717?style=for-the-badge&logo=apple&logoColor=white" alt="Download macOS DMG"/>
   </a>
   &nbsp;
-  <a href="https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0">
-    <img src="https://img.shields.io/badge/🪟_Direct_Download-Windows_10%2F11_(Setup_.exe)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Download Windows Installer"/>
+  <a href="https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-Setup-0.8.0.exe">
+    <img src="https://img.shields.io/badge/🪟_Direct_Download-Windows_Setup_(374MB)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Download Windows Installer"/>
   </a>
   &nbsp;
   <a href="https://github.com/2gosooclass/video-agent-studio/releases/latest">
@@ -126,8 +126,8 @@ Bundles 15 categorized BGM tracks (Forest Piano, Harmonica Folk, Acoustic Guitar
 | Operating System | Installer Format | Direct Download Link | Architecture |
 | :--- | :--- | :--- | :--- |
 | 🍏 **macOS** | `.dmg` (Disk Image) | [⬇️ **Download macOS DMG (740MB)**](https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-0.8.0-arm64.dmg) | Apple Silicon (M1/M2/M3/M4) |
-| 🪟 **Windows** | `.exe` (Setup Wizard) | [⬇️ **Download Windows Setup.exe**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | Windows 10 / 11 (64-bit) |
-| 🪟 **Windows Portable** | `.exe` (No Install) | [⬇️ **Download Windows Portable.exe**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | Windows 10 / 11 (64-bit) |
+| 🪟 **Windows** | `.exe` (Setup Wizard) | [⬇️ **Download Windows Setup.exe (374MB)**](https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-Setup-0.8.0.exe) | Windows 10 / 11 (64-bit) |
+| 🪟 **Windows Portable** | `.exe` (No Install) | [⬇️ **Download Windows Portable.exe (374MB)**](https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-0.8.0-portable.exe) | Windows 10 / 11 (64-bit) |
 | 📦 **All Assets** | All Platforms | [🔗 **Browse GitHub Releases (v0.8.0)**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | Multi-Platform |
 
 > 💡 **macOS First-Launch Note**: If macOS displays *"damaged and can't be opened"* or *"unidentified developer"*, simply run `xattr -cr "/Applications/Video Agent Studio.app"` in Terminal. See [Apple Security Guide](#-troubleshooting--installation-guide-macos--windows) below!
@@ -229,8 +229,8 @@ When launching `Video Agent Studio-Setup.exe` on Windows:
 | 운영체제 | 파일 형식 | 바로 다운로드 링크 | 지원 환경 |
 | :--- | :--- | :--- | :--- |
 | 🍏 **맥 (macOS)** | `.dmg` | [⬇️ **맥용 설치 파일 다운로드 (740MB)**](https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-0.8.0-arm64.dmg) | Apple Silicon (M1/M2/M3/M4) |
-| 🪟 **윈도우 (Windows)** | `.exe` | [⬇️ **윈도우 설치 파일 (Setup.exe)**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | Windows 10 / 11 (64-bit) |
-| 🪟 **윈도우 무설치** | `.exe` | [⬇️ **윈도우 포터블 (Portable.exe)**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | Windows 10 / 11 (64-bit) |
+| 🪟 **윈도우 (Windows)** | `.exe` | [⬇️ **윈도우 설치 파일 (Setup.exe 374MB)**](https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-Setup-0.8.0.exe) | Windows 10 / 11 (64-bit) |
+| 🪟 **윈도우 무설치** | `.exe` | [⬇️ **윈도우 포터블 (Portable.exe 374MB)**](https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-0.8.0-portable.exe) | Windows 10 / 11 (64-bit) |
 | 📦 **전체 릴리즈 목록** | All | [🔗 **깃허브 공식 릴리즈 페이지 바로가기**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | 전체 플랫폼 |
 
 ---
