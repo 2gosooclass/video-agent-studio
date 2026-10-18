@@ -482,7 +482,7 @@
     </div>
     <div class="adv-item">
       <label style="cursor:pointer; display:flex; align-items:center; gap:5px; color:#38bdf8; font-weight:600;">
-        <input type="checkbox" id="autoMosaicChk"> <span id="advMosaicLabel">🛡️ AI 초상권 보호 (얼굴/인물 자동 모자이크)</span>
+        <input type="checkbox" id="autoMosaicChk"> <span id="advMosaicLabel">🛡️ AI 초상권 보호 (얼굴 80% 모자이크)</span>
       </label>
     </div>
   </div>
@@ -607,6 +607,7 @@
           </div>
           <div class="thumb-btns">
             <button class="action-btn change-img-btn" data-ci="${i}" title="${isEn ? 'Replace with local photo or video' : '내 컴퓨터의 사진 또는 영상으로 교체'}">${isEn ? '🔄 Replace Media' : '🔄 미디어 교체'}</button>
+            <button type="button" class="action-btn scene-mosaic-btn" data-mosaic-btn="${i}" style="margin-top:3px; border:1px solid ${scene.mosaic ? '#38bdf8' : '#334155'}; background:${scene.mosaic ? 'rgba(56,189,248,0.22)' : 'rgba(30,41,59,0.5)'}; color:${scene.mosaic ? '#38bdf8' : '#94a3b8'}; font-weight:700;" title="${isEn ? 'Toggle Privacy Face Mosaic (80% face area)' : '얼굴 80% 모자이크 (초상권 보호) 켜기/끄기'}">${scene.mosaic ? (isEn ? '🛡️ Mosaic ON' : '🛡️ 모자이크 ON') : (isEn ? '🛡️ Mosaic OFF' : '🛡️ 모자이크 OFF')}</button>
           </div>
         </div>
         <div class="body">
@@ -673,6 +674,15 @@
       const kind = curSfx === 'auto' ? 'whoosh' : curSfx;
       const uri = await window.agent.previewSfx(kind);
       playAudioPreview(uri);
+    }));
+
+    scenesEl.querySelectorAll('.scene-mosaic-btn').forEach((btn) => btn.addEventListener('click', (e) => {
+      const idx = +e.currentTarget.dataset.mosaicBtn;
+      if (scenes[idx]) {
+        scenes[idx].mosaic = !scenes[idx].mosaic;
+        render();
+        sync();
+      }
     }));
 
     scenesEl.querySelectorAll('.scene-adv-toggle').forEach((toggle) => toggle.addEventListener('click', (e) => {
@@ -1438,6 +1448,16 @@
   showSubtitlesChk.addEventListener('change', updateTitleSubState);
   updateTitleSubState();
 
+  const autoMosaicEl = document.getElementById('autoMosaicChk');
+  if (autoMosaicEl) {
+    autoMosaicEl.addEventListener('change', (e) => {
+      const isChecked = e.target.checked;
+      scenes.forEach((s) => { s.mosaic = isChecked; });
+      render();
+      sync();
+    });
+  }
+
   // 빌드 실행
   buildBtn.addEventListener('click', async () => {
     stopBgmPreview();
@@ -1493,6 +1513,7 @@
           type: s.type,
           narration: (s.narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim(),
           motion: s.motion || 'kenburns',
+          mosaic: !!s.mosaic,
           sfx: s.sfx,
           tag: '',
           originalVoice: !!s.originalVoice,
@@ -1894,7 +1915,7 @@
     const advSilenceLabel = document.getElementById('advSilenceLabel');
     if (advSilenceLabel) advSilenceLabel.textContent = isEn ? 'Auto Cut Silence' : '무음 구간 자동 컷';
     const advMosaicLabel = document.getElementById('advMosaicLabel');
-    if (advMosaicLabel) advMosaicLabel.textContent = isEn ? '🛡️ AI Privacy Mosaic (Faces/People)' : '🛡️ AI 초상권 보호 (얼굴/인물 자동 모자이크)';
+    if (advMosaicLabel) advMosaicLabel.textContent = isEn ? '🛡️ AI Privacy Mosaic (80% Face Area)' : '🛡️ AI 초상권 보호 (얼굴 80% 모자이크)';
     const isDrawerHidden = advSettingsDrawer.style.display === 'none';
     toggleAdvBtn.textContent = isDrawerHidden
       ? (isEn ? '⚙️ Advanced ▾' : '⚙️ 상세 옵션 ▾')

@@ -153,6 +153,90 @@ async function applyAutoMosaic(srcPath, dstPath) {
   return dstPath;
 }
 
+async function applyVideoFaceMosaic(srcVideo, dstVideo, startTime, endTime, VW, VH, FPS, segDir, n) {
+  try {
+    const probeFrame = path.join(segDir, `probe_face_${n}.jpg`);
+    const maskPng = path.join(segDir, `face_mask_${n}.png`);
+    const sampleSec = Math.max(0, (startTime || 0) + 0.05);
+
+    await run(ffmpegPath, [
+      '-y', '-loglevel', 'error',
+      '-ss', String(sampleSec.toFixed(3)),
+      '-i', srcVideo,
+      '-vf', `scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH}`,
+      '-vframes', '1',
+      probeFrame
+    ]);
+
+    let faceBoxes = [];
+    const detectBins = [
+      path.join(__dirname, 'tools', 'get_faces.swift'),
+      path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'tools', 'get_faces.swift'),
+      '/tmp/get_faces.swift'
+    ];
+    for (const scr of detectBins) {
+      if (fs.existsSync(scr)) {
+        try {
+          const out = await run('swift', [scr, probeFrame]);
+          const lines = out.trim().split('\n').filter(Boolean);
+          for (const line of lines) {
+            const parts = line.split(',').map(Number);
+            if (parts.length === 4) faceBoxes.push(parts);
+          }
+          if (faceBoxes.length) break;
+        } catch (_) {}
+      }
+    }
+
+    if (!faceBoxes.length) {
+      return false;
+    }
+
+    const [fx1, fy1, fx2, fy2] = faceBoxes[0];
+    const fw = fx2 - fx1;
+    const fh = fy2 - fy1;
+    const fcx = (fx1 + fx2) / 2;
+    const fcy = (fy1 + fy2) / 2;
+
+    let w80 = Math.round(fw * 0.80);
+    let h80 = Math.round(fh * 0.82);
+    w80 -= (w80 % 2);
+    h80 -= (h80 % 2);
+    let x80 = Math.round(fcx - w80 / 2);
+    let y80 = Math.round(fcy - h80 / 2);
+    x80 -= (x80 % 2);
+    y80 -= (y80 % 2);
+    x80 = Math.max(0, Math.min(VW - w80, x80));
+    y80 = Math.max(0, Math.min(VH - h80, y80));
+
+    const pyMask = `from PIL import Image, ImageDraw, ImageFilter; im = Image.new('L', (${w80}, ${h80}), 0); draw = ImageDraw.Draw(im); draw.ellipse((4, 4, ${w80 - 4}, ${h80 - 4}), fill=255); im = im.filter(ImageFilter.GaussianBlur(radius=6)); im.save('${maskPng.replace(/\\/g, '/')}')`;
+    await run('python3', ['-c', pyMask]);
+
+    const pixScale = Math.max(10, Math.round(w80 / 14));
+
+    await run(ffmpegPath, [
+      '-y', '-loglevel', 'error',
+      '-ss', String((startTime || 0).toFixed(3)),
+      '-to', String((endTime || 0).toFixed(3)),
+      '-i', srcVideo,
+      '-loop', '1', '-i', maskPng,
+      '-filter_complex',
+      `[0:v]scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS},split[base][for_crop];` +
+      `[for_crop]crop=${w80}:${h80}:${x80}:${y80},scale=${Math.floor(w80 / pixScale)}:${Math.floor(h80 / pixScale)},scale=${w80}:${h80}:flags=neighbor[pix];` +
+      `[pix][1:v]alphamerge[pix_alpha];` +
+      `[base][pix_alpha]overlay=${x80}:${y80}:shortest=1[v]`,
+      '-map', '[v]', '-map', '0:a',
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac',
+      dstVideo
+    ]);
+
+    return fs.existsSync(dstVideo);
+  } catch (e) {
+    console.warn('[VideoMosaic] error, fallback', e);
+    return false;
+  }
+}
+
 async function duration(file) {
   const out = await run(ffprobePath, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]);
   return parseFloat(out.trim());
@@ -312,16 +396,23 @@ async function buildProject(project, onProgress) {
       onProgress && onProgress('voice', n, scenes.length);
       const segDur = curScene.end - curScene.start;
       const cutVideoSeg = path.join(segDir, `orig_seg${n}.mp4`);
-      await run(ffmpegPath, [
-        '-y', '-loglevel', 'error',
-        '-ss', String(curScene.start.toFixed(3)),
-        '-to', String(curScene.end.toFixed(3)),
-        '-i', curScene.video,
-        '-vf', `scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS}`,
-        '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
-        '-c:a', 'aac', '-ar', '44100', '-ac', '2',
-        cutVideoSeg
-      ]);
+      const shouldMosaic = (curScene.mosaic === true) || (autoMosaic && curScene.mosaic !== false);
+      let mosaicked = false;
+      if (shouldMosaic) {
+        mosaicked = await applyVideoFaceMosaic(curScene.video, cutVideoSeg, curScene.start, curScene.end, VW, VH, FPS, segDir, n);
+      }
+      if (!mosaicked) {
+        await run(ffmpegPath, [
+          '-y', '-loglevel', 'error',
+          '-ss', String(curScene.start.toFixed(3)),
+          '-to', String(curScene.end.toFixed(3)),
+          '-i', curScene.video,
+          '-vf', `scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS}`,
+          '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+          '-c:a', 'aac', '-ar', '44100', '-ac', '2',
+          cutVideoSeg
+        ]);
+      }
 
       const sfxKind = curScene.sfx && curScene.sfx !== 'auto' && curScene.sfx !== 'none'
         ? curScene.sfx : null;
@@ -475,8 +566,9 @@ async function buildProject(project, onProgress) {
           }
         }
 
-        // 3) AI 초상권 안심 보호 (얼굴 및 인물 자동 모자이크)
-        if (autoMosaic) {
+        // 3) AI 초상권 안심 보호 (얼굴 80% 모자이크)
+        const shouldMosaic = (curScene.mosaic === true) || (autoMosaic && curScene.mosaic !== false);
+        if (shouldMosaic) {
           try {
             const mosaicImg = path.join(segDir, `mosaic_${n}.png`);
             await applyAutoMosaic(sceneImg, mosaicImg);

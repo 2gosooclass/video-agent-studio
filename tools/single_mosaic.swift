@@ -29,28 +29,33 @@ try? handler.perform([faceReq, humanReq])
 
 var mosaicRects: [CGRect] = []
 
-// 1) Faces detected
+// 1) Faces detected: 80% inner face only (eyes, nose, mouth) preserving hair, chin, and contour
 if let faces = faceReq.results {
     for f in faces {
         let bb = f.boundingBox
-        let rect = CGRect(x: bb.origin.x * w, y: bb.origin.y * h, width: bb.width * w, height: bb.height * h)
-        let expanded = rect.insetBy(dx: -rect.width * 0.22, dy: -rect.height * 0.25)
-        mosaicRects.append(expanded)
+        let fw = bb.width * w
+        let fh = bb.height * h
+        let fcx = (bb.origin.x + bb.width / 2.0) * w
+        let fcy = (bb.origin.y + bb.height * 0.48) * h
+        let w80 = fw * 0.80
+        let h80 = fh * 0.82
+        let innerRect = CGRect(x: fcx - w80 / 2.0, y: fcy - h80 / 2.0, width: w80, height: h80)
+        mosaicRects.append(innerRect)
     }
 }
 
-// 2) Humans detected (for turned heads, distant passersby)
+// 2) Humans detected (for distant background passersby, compact head area only)
 if let humans = humanReq.results {
     for human in humans {
         let bb = human.boundingBox
-        let headRect = CGRect(x: bb.origin.x * w,
-                              y: (bb.origin.y + bb.height * 0.72) * h,
-                              width: bb.width * w,
-                              height: (bb.height * 0.28) * h)
-        let expanded = headRect.insetBy(dx: -headRect.width * 0.15, dy: -headRect.height * 0.15)
-        let alreadyCovered = mosaicRects.contains { $0.intersects(expanded) }
+        let hw = bb.width * w * 0.65
+        let hh = bb.height * h * 0.20
+        let hcx = (bb.origin.x + bb.width / 2.0) * w
+        let hcy = (bb.origin.y + bb.height * 0.85) * h
+        let headRect = CGRect(x: hcx - hw / 2.0, y: hcy - hh / 2.0, width: hw, height: hh)
+        let alreadyCovered = mosaicRects.contains { $0.intersects(headRect) }
         if !alreadyCovered {
-            mosaicRects.append(expanded)
+            mosaicRects.append(headRect)
         }
     }
 }
