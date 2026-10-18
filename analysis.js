@@ -279,4 +279,53 @@ async function regenerateSceneImage({apiKey, narration, prompt, aspect = '9:16'}
   });
 }
 
-module.exports = {analyzeScenes, generateSceneImage, planSuperpowersProject, regenerateSceneImage};
+async function detectMosaicTargetsViaGemini({apiKey, model = 'gemini-2.5-flash', imagePath, prompt}) {
+  if (!apiKey || !imagePath || !fs.existsSync(imagePath) || !prompt) return [];
+  try {
+    const ext = path.extname(imagePath).toLowerCase();
+    const data = fs.readFileSync(imagePath).toString('base64');
+    const mimeType = MIME[ext] || 'image/jpeg';
+
+    const systemInstruction = [
+      'You are a high-precision computer vision visual grounding AI assistant.',
+      `The user wants to detect target regions for privacy mosaic or blurring: "${prompt}".`,
+      'Detect 2D bounding boxes for all matching entities or objects (e.g. specific persons, background bystanders, car license plates, screens, logos).',
+      'If the request is for specific person(s) or people, return the face or head region (focusing on the core 80% facial area).',
+      'If the request is for car license plates, return the exact license plate box.',
+      'Output strictly a JSON array of objects in this format:',
+      '[{"box_2d": [ymin, xmin, ymax, xmax], "label": "description"}]',
+      'where ymin, xmin, ymax, xmax are normalized integers between 0 and 1000.',
+      'Return ONLY the JSON array without markdown formatting or other text.'
+    ].join(' ');
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            {text: systemInstruction},
+            {inline_data: {mime_type: mimeType, data}}
+          ]
+        }],
+        generationConfig: {
+          response_mime_type: 'application/json'
+        }
+      })
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return [];
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) {
+      return parsed.map(item => item.box_2d).filter(b => Array.isArray(b) && b.length === 4);
+    }
+  } catch (err) {
+    console.warn('[detectMosaicTargetsViaGemini] error:', err);
+  }
+  return [];
+}
+
+module.exports = {analyzeScenes, generateSceneImage, planSuperpowersProject, regenerateSceneImage, detectMosaicTargetsViaGemini};

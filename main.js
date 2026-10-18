@@ -137,6 +137,8 @@ app.whenReady().then(() => {
         bgmVolume: Number(payload.bgmVolume) || 0.35,
         sfxPack: payload.sfxPack || 'variety',
         autoMosaic: !!payload.autoMosaic,
+        globalMosaicTarget: payload.globalMosaicTarget || '',
+        apiKey: settings.apiKey || '',
         workDir,
         outputPath,
         fontsDir,
