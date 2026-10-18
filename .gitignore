@@ -1,0 +1,53 @@
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Node.js & Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Build Outputs & Binaries
+dist/
+out/
+build/
+*.dmg
+*.exe
+*.pkg
+*.app/
+*.asar
+*.zip
+*.tar.gz
+
+# Environment Variables & Secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.cert
+*.crt
+*.pickle
+token*.pickle
+secrets/
+credentials.json
+client_secrets.json
+settings.json
+
+# Temporary & Cache Files
+temp/
+tmp/
+*.tmp
+*.log
+.cache/
+.electron/

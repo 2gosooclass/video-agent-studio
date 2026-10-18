@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Video Agent Studio</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'SF Pro Text', sans-serif;
+    background: #121318;
+    color: #e5e7eb;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+  }
+  header {
+    background: #1a1b23;
+    border-bottom: 1px solid #282a36;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 { font-size: 15px; font-weight: 700; color: #f8fafc; letter-spacing: -0.3px; }
+  header .sub { font-size: 12px; color: #94a3b8; margin-left: 4px; }
+  main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  button {
+    background: #222430;
+    color: #e2e8f0;
+    border: 1px solid #323545;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  button:hover { background: #2c2f3f; border-color: #494d63; }
+  button.primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  button.primary:hover { background: #2563eb; }
+  button.action-btn { background: #1e293b; border-color: #38bdf8; color: #38bdf8; }
+  button.action-btn:hover { background: #0c4a6e; border-color: #7dd3fc; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .steps {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .step {
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #17181f;
+    border: 1px solid #232532;
+  }
+  .step.on { background: #1e3a5f; color: #60a5fa; border-color: #2563eb; }
+  .panel {
+    background: #171922;
+    border: 1px solid #262938;
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .panel-title { font-size: 13px; font-weight: 700; color: #cbd5e1; }
+  .panel-desc { font-size: 11.5px; color: #94a3b8; }
+  #scenes {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .scene {
+    background: #171922;
+    border: 1px solid #262938;
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    transition: border-color .15s ease;
+  }
+  .scene:hover { border-color: #35394d; }
+  .scene-thumb-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 104px;
+    flex-shrink: 0;
+  }
+  .scene-thumb {
+    width: 104px;
+    height: 138px;
+    background: #0f1016;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid #20222f;
+    cursor: pointer;
+  }
+  .scene-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .thumb-btns button {
+    padding: 4px 6px;
+    font-size: 11px;
+    border-radius: 6px;
+    width: 100%;
+    text-align: center;
+  }
+  .motion-badge {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    right: 4px;
+    background: rgba(0,0,0,0.75);
+    border-radius: 4px;
+    font-size: 10px;
+    color: #38bdf8;
+    text-align: center;
+    padding: 2px 0;
+    font-weight: 600;
+  }
+  .scene .body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .scene .row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .scene .row-top .num {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f1f5f9;
+  }
+  .scene textarea {
+    width: 100%;
+    min-height: 64px;
+    background: #101117;
+    border: 1px solid #232532;
+    border-radius: 8px;
+    color: #f1f5f9;
+    padding: 9px 12px;
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+  }
+  .scene textarea:focus { outline: none; border-color: #3b82f6; }
+  .scene-adv-toggle {
+    font-size: 11.5px;
+    color: #64748b;
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 0;
+    transition: color .15s ease;
+  }
+  .scene-adv-toggle:hover { color: #94a3b8; }
+  .scene-adv-box {
+    background: #111219;
+    border: 1px dashed #282a3a;
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .adv-drawer {
+    background: #151720;
+    border-top: 1px solid #282a3a;
+    padding: 12px 18px;
+  }
+  .adv-drawer-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+  }
+  .adv-drawer .adv-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: #cbd5e1;
+  }
+  .adv-drawer .adv-label {
+    color: #94a3b8;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .adv-drawer select {
+    background: #1c1e29;
+    border: 1px solid #2f3348;
+    border-radius: 6px;
+    color: #e2e8f0;
+    padding: 5px 8px;
+    font-size: 11.5px;
+  }
+  footer {
+    background: #171821;
+    border-top: 1px solid #252836;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    font-size: 12px;
+  }
+  .footer-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .footer-left select {
+    background: #1f2230;
+    border: 1px solid #2f3348;
+    border-radius: 6px;
+    color: #e2e8f0;
+    padding: 7px 10px;
+    font: inherit;
+    font-size: 12px;
+  }
+  .footer-center {
+    flex: 1;
+    text-align: center;
+    color: #94a3b8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12.5px;
+    padding: 0 10px;
+  }
+  .footer-center.done { color: #10b981; font-weight: 600; }
+  .footer-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .build-hero-btn {
+    background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    padding: 10px 22px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.4) !important;
+    cursor: pointer !important;
+    letter-spacing: -0.2px;
+    transition: transform .1s ease, box-shadow .1s ease !important;
+  }
+  .build-hero-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(37,99,235,0.55) !important;
+  }
+  .build-hero-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+  }
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #64748b;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎬 Video Agent Studio</h1>
+  <span class="sub">Add Photos/Videos · AI Voice & Captions · Viral SFX & BGM · One-Click Shorts Engine</span>
+</header>
+<main>
+  <div class="toolbar">
+    <button id="addBtn" class="primary" style="background: linear-gradient(135deg, #1d4ed8, #3b82f6); border: 1px solid #60a5fa; color: #ffffff; font-weight: 700; box-shadow: 0 2px 8px rgba(37,99,235,0.35);">📷 Add Photos</button>
+    <button id="videoBtn" style="font-weight:600;">🎬 Add Videos</button>
+    <div class="lang-pill" style="margin-left:auto; display:inline-flex; align-items:center; background:#12141d; border:1px solid #282c3f; border-radius:7px; padding:2px; gap:2px;">
+      <button id="langKoBtn" type="button" style="padding:4px 10px; font-size:11.5px; border-radius:5px; border:none; cursor:pointer; font-weight:700; transition:all 0.15s ease;" title="한국어로 전환">🇰🇷 KO</button>
+      <button id="langEnBtn" type="button" style="padding:4px 10px; font-size:11.5px; border-radius:5px; border:none; cursor:pointer; font-weight:700; transition:all 0.15s ease;" title="Switch to English">🇺🇸 EN</button>
+    </div>
+    <button id="newBtn" style="background:#241920; border-color:#702434; color:#f472b6;">🆕 New Project</button>
+    <button id="settingsBtn" style="background:#1e202b; border-color:#2f3348; color:#94a3b8;">⚙️ AI Settings</button>
+    <div class="steps">
+      <span class="step" id="st-plan">1 Media</span>
+      <span class="step" id="st-voice">2 Voice</span>
+      <span class="step" id="st-render">3 Motion/SFX</span>
+      <span class="step" id="st-captions">4 Captions</span>
+    </div>
+  </div>
+
+  <!-- Settings Panel -->
+  <div id="settingsPanel" class="panel" style="display:none;">
+    <div class="panel-title">⚙️ AI Engine & Voice Settings</div>
+    <div class="panel-desc">Enter your Google Gemini API key to activate script planning, Gemini Vision image analysis, and high-fidelity TTS narration.</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <input id="apiKeyInput" type="password" placeholder="Gemini API Key (aistudio.google.com)" style="flex:1; min-width:260px; background:#121318; border:1px solid #2e313d; border-radius:8px; color:#f1f5f9; padding:8px 10px; font:inherit; font-size:12.5px;">
+      <input id="modelInput" placeholder="Model" value="gemini-2.5-flash" style="width:160px; background:#121318; border:1px solid #2e313d; border-radius:8px; color:#f1f5f9; padding:8px 10px; font:inherit; font-size:12.5px;">
+      <select id="voiceSelect" style="width:240px;">
+        <option value="Kore">👩 Female 30s (Narrator/Info - Default)</option>
+        <option value="Leda">👧 Female 20s (Fresh & Lively / Shorts)</option>
+        <option value="Puck">👦 Male 20s (Energetic Creator)</option>
+        <option value="Orus">👨 Male 30s (Clean & Smart Tech)</option>
+        <option value="Aoede">👩 Female 40s (Elegant & Warm Lifestyle)</option>
+        <option value="Charon">👨 Male 40s (Deep & Authoritative)</option>
+        <option value="Zephyr">👩 Female 40-50s (Calm & Poetic Essay)</option>
+        <option value="Sulafat">👵 Senior Female 50-60s (Warm Healing)</option>
+        <option value="Fenrir">👴 Senior Male 50-60s (Deep Documentary)</option>
+        <option value="VoiceBox">🎙️ Custom Cloned Voice (VoiceBox AI)</option>
+      </select>
+      <button id="saveSettingsBtn" class="primary" style="padding:8px 16px; font-size:12.5px;">Save</button>
+    </div>
+  </div>
+
+  <div style="background:#151822; border:1px solid #232738; border-radius:12px; padding:12px 14px; margin-bottom:12px; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <!-- 1) 상단 제목 (헤드라인) 선택 구역 -->
+    <div style="background:#1b1e2c; border:1px solid #2b3046; border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:700; font-size:13px; color:#38bdf8;">
+          <input type="checkbox" id="showTitleChk" checked style="width:16px; height:16px; accent-color:#38bdf8; cursor:pointer;">
+          <span id="titleHeadlineLabel">📌 Top Title (Headline)</span>
+        </label>
+        <span id="titleSubLabel" style="font-size:11px; color:#94a3b8;">Bold Top Headline</span>
+      </div>
+      <div id="titleControlsGroup" style="display:flex; flex-direction:column; gap:6px;">
+        <input id="titleInput" placeholder="Enter Title (e.g. Coding at Lounge | Casual Friday, 2 lines auto-split)" style="background:#131520; border:1px solid #282c3f; border-radius:6px; color:#f1f5f9; padding:7px 10px; font:inherit; font-size:12.5px;">
+        <div style="display:flex; gap:6px;">
+          <select id="titleSizeSelect" style="flex:1; background:#131520; border:1px solid #282c3f; border-radius:6px; color:#38bdf8; padding:6px 8px; font:inherit; font-size:11px;">
+            <option value="large" selected>📐 Size: Large (108pt - Rec.)</option>
+            <option value="xlarge">📐 Size: Extra Large (126pt)</option>
+            <option value="normal">📐 Size: Normal (88pt)</option>
+          </select>
+          <select id="titleColorSelect" style="flex:1; background:#131520; border:1px solid #282c3f; border-radius:6px; color:#34d399; padding:6px 8px; font:inherit; font-size:11px;">
+            <option value="mintWhite" selected>🌿 2-Line: Mint + White (Rec.)</option>
+            <option value="yellowWhite">🟡 2-Line: Yellow + White</option>
+            <option value="whiteMint">⚪ 2-Line: White + Mint</option>
+            <option value="white">⚪ Solid: Clean White</option>
+            <option value="mintSingle">🌿 Solid: Vivid Mint</option>
+            <option value="yellowSingle">🟡 Solid: Vivid Yellow</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <select id="titleModeSelect" style="flex:1; background:#131520; border:1px solid #282c3f; border-radius:6px; color:#38bdf8; padding:6px 8px; font:inherit; font-size:11px;">
+            <option value="fullTime" selected>⏱️ Full Video Duration</option>
+            <option value="intro3s">⏱️ First 3 Seconds Only</option>
+          </select>
+          <select id="titleStyleSelect" style="flex:1; background:#131520; border:1px solid #282c3f; border-radius:6px; color:#facc15; padding:6px 8px; font:inherit; font-size:11px;">
+            <option value="shadow" selected>✨ 3D Drop Shadow</option>
+            <option value="boxBar">🏷️ Semi-Transparent Bar</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2) 하단 자막 & 음성 출력 모드 선택 구역 -->
+    <div style="background:#1b1e2c; border:1px solid #2b3046; border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:700; font-size:13px; color:#34d399;">
+          <input type="checkbox" id="showSubtitlesChk" checked style="width:16px; height:16px; accent-color:#34d399; cursor:pointer;">
+          <span id="subtitleHeadlineLabel">💬 Subtitles & Age-Group Voice Narration</span>
+        </label>
+        <span id="subtitleSubLabel" style="font-size:11px; color:#94a3b8;">1-Line Compact Subtitle Burn-In</span>
+      </div>
+      <div id="subtitleControlsGroup" style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; gap:6px;">
+          <select id="outputModeSelect" style="flex:1.25; background:#131520; border:1px solid #10b981; border-radius:6px; color:#34d399; padding:6px 8px; font:inherit; font-size:11px; font-weight:700;">
+            <option value="both" selected>🎙️+💬 Voiceover + Subtitles (Rec.)</option>
+            <option value="voiceOnly">🎙️ Voiceover Only (Hidden Subtitles)</option>
+            <option value="subtitlesOnly">💬 Subtitles Only (Music/Silent)</option>
+          </select>
+          <select id="mainVoiceSelect" title="Select Voiceover Actor" style="flex:1.35; background:#131520; border:1px solid #38bdf8; border-radius:6px; color:#bae6fd; padding:6px 8px; font:inherit; font-size:11px; font-weight:600;">
+            <option value="Kore" selected>👩 Female 30s (Narrator/Info - Default)</option>
+            <option value="Leda">👧 Female 20s (Fresh & Lively / Shorts)</option>
+            <option value="Puck">👦 Male 20s (Energetic Creator)</option>
+            <option value="Orus">👨 Male 30s (Clean & Smart Tech)</option>
+            <option value="Aoede">👩 Female 40s (Elegant & Warm Lifestyle)</option>
+            <option value="Charon">👨 Male 40s (Deep & Authoritative)</option>
+            <option value="Zephyr">👩 Female 40-50s (Calm & Poetic Essay)</option>
+            <option value="Sulafat">👵 Senior Female 50-60s (Warm Healing)</option>
+            <option value="Fenrir">👴 Senior Male 50-60s (Deep Documentary)</option>
+            <option value="VoiceBox">🎙️ Custom Cloned Voice (VoiceBox AI)</option>
+          </select>
+          <button id="voicePreviewBtn" type="button" title="Preview selected voice" style="padding:5px 8px; font-size:11px; background:#131520; border:1px solid #38bdf8; color:#38bdf8; border-radius:6px; cursor:pointer; flex-shrink:0;">🔊</button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <select id="captionStyleSelect" style="flex:1.2; background:#131520; border:1px solid #282c3f; border-radius:6px; color:#38bdf8; padding:6px 8px; font:inherit; font-size:11px; font-weight:600;">
+            <optgroup label="🇺🇸 Global English Fonts (10 Types)">
+              <option value="anton" selected>🔤 Anton (TikTok/Shorts #1 Punch)</option>
+              <option value="bebas">🔤 Bebas Neue (Tall Cinematic)</option>
+              <option value="montserrat">🔤 Montserrat (Modern Tech Bold)</option>
+              <option value="poppins">🔤 Poppins (Trendy Creator)</option>
+              <option value="oswald">🔤 Oswald (Impact Headline)</option>
+              <option value="inter">🔤 Inter (Silicon Valley Clean)</option>
+              <option value="playfair">🔤 Playfair Display (Luxury Lookbook)</option>
+              <option value="pacifico">🔤 Pacifico (Vibrant Script)</option>
+              <option value="bangers">🔤 Bangers (Viral Meme/Comic)</option>
+              <option value="caveat">🔤 Caveat (Casual Handwriting)</option>
+            </optgroup>
+            <optgroup label="🇰🇷 Korean Recommended Fonts (11 Types)">
+              <option value="scdream">🔤 S-Core Dream (Trending Gothic)</option>
+              <option value="jalnan">🔤 Jalnan (Headline & Impact)</option>
+              <option value="cafe24">🔤 Cafe24 Danjunghae (Sleek Clean)</option>
+              <option value="pretendard">🔤 Pretendard Bold (Standard Clean)</option>
+              <option value="gmarket">🔤 Gmarket Sans (Bold Luxury)</option>
+              <option value="blackhan">🔤 Black Han Sans (Heavy Punch)</option>
+              <option value="maruburi">🔤 Maru Buri (Emotional Serif)</option>
+              <option value="dohyeon">🔤 DoHyeon (TV Show Caption)</option>
+              <option value="jua">🔤 Jua (Friendly & Playful)</option>
+              <option value="myeongjo">🔤 Nanum Myeongjo (Classic Serif)</option>
+              <option value="pen">🔤 Nanum Pen (Handwritten)</option>
+            </optgroup>
+          </select>
+          <select id="shadowStyleSelect" style="flex:0.8; background:#131520; border:1px solid #282c3f; border-radius:6px; color:#facc15; padding:6px 8px; font:inherit; font-size:11px;">
+            <option value="deepShadow" selected>🎨 3D Deep Shadow</option>
+            <option value="pureShadow">🎨 Pure Shadow</option>
+            <option value="thickBorder">🎨 Bold Black Outline</option>
+            <option value="glowShadow">🎨 Neon Glow</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; background:rgba(52,211,153,0.08); border:1px solid rgba(52,211,153,0.18); border-radius:5px; padding:5px 8px;">
+          <span id="aiTipLabel" style="font-size:11px; color:#94a3b8;">✨ AI 1-line vision analysis & scene-by-scene [🎤 Mic Dubbing] auto-sync supported</span>
+          <button id="autoScriptBtn" type="button" style="background:linear-gradient(135deg, #059669, #10b981); border:1px solid #34d399; color:#ffffff; padding:4px 10px; border-radius:5px; font-weight:700; font-size:11px; cursor:pointer; white-space:nowrap; box-shadow:0 1px 4px rgba(16,185,129,0.3);" title="Generate 1-line AI scripts for all photos and videos">✨ Generate AI Script</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="videoInfo" style="display:none; background:#191b22; border:1px solid #262934; border-radius:8px; padding:10px 14px; font-size:13px; color:#38bdf8;"></div>
+  <div id="scenes"><div class="empty">No scenes added yet.<br>Click <b>[📷 Add Photos]</b> or <b>[🎬 Add Videos]</b> in the toolbar to get started.</div></div>
+</main>
+<div id="advSettingsDrawer" class="adv-drawer" style="display:none;">
+  <div class="adv-drawer-inner">
+    <div class="adv-item">
+      <span id="advSfxLabel" class="adv-label">SFX Pack</span>
+      <select id="sfxPackSelect" title="SFX Pack">
+        <option value="variety" selected>Variety Show Full Pack (Default)</option>
+        <option value="lecture">Tech & Tutorial</option>
+        <option value="transition">Whoosh Transition</option>
+        <option value="none">No Sound Effects</option>
+      </select>
+    </div>
+    <div class="adv-item">
+      <span id="advDurLabel" class="adv-label">Video Duration</span>
+      <select id="shortFormSelect" title="Auto Cut Duration">
+        <option value="0" selected>Full Duration</option>
+        <option value="15">15s Shorts</option>
+        <option value="30">30s Shorts</option>
+        <option value="60">60s Shorts</option>
+      </select>
+    </div>
+    <div class="adv-item">
+      <label style="cursor:pointer; display:flex; align-items:center; gap:5px;">
+        <input type="checkbox" id="trimSilenceChk"> <span id="advSilenceLabel">Auto Cut Silence</span>
+      </label>
+    </div>
+  </div>
+</div>
+<footer>
+  <div class="footer-left">
+    <select id="aspectSelect" title="Aspect Ratio">
+      <option value="9:16" selected>📱 9:16 Portrait (Shorts/Reels)</option>
+      <option value="16:9">🖥️ 16:9 Landscape (YouTube)</option>
+      <option value="1:1">⏹️ 1:1 Square (Feed)</option>
+    </select>
+    <select id="bgmSelect" title="Select BGM" style="max-width: 235px;">
+      <option value="03_piano_forest" selected>🌿 [Healing] Forest Lullabye Piano</option>
+      <option value="11_harmonica_porchblues">🌾 [Folk] Porch Blues Guitar & Harmonica</option>
+      <option value="12_sad_heartbreaking">💧 [Emotional] Heartbreaking Strings & Piano</option>
+      <option value="04_acoustic_spring">☀️ [Upbeat] Spring In My Step Acoustic</option>
+      <option value="14_acoustic_carefree">🎸 [Cheerful] Carefree Acoustic & Ukulele</option>
+      <option value="15_guitar_easylemon">☕ [Acoustic] Easy Lemon Chill Guitar</option>
+      <option value="13_dance_monster">🪩 [Dance] Dance Monster Pop Beats</option>
+      <option value="06_hype_theitch">🎤 [Vocal] Energetic Rap & Pop (NEFFEX)</option>
+      <option value="01_lofi_kurt">🎧 [Lofi] Trendy Chill Lofi (Kurt)</option>
+      <option value="05_pop_littlefish">🎶 [Pop] Daily Upbeat Pop (Little Fish)</option>
+      <option value="02_synth_violet">🌆 [Synthwave] Neon Retro Synth (Violet)</option>
+      <option value="07_rock_elevators">⚡ [Rock] Dynamic Energy Rock</option>
+      <option value="09_viral_monkeys">🐒 [Comedy] Viral Shorts Comedy (#1)</option>
+      <option value="08_comic_sneakysnitch">🕵️ [Mystery] Sneaky Snitch Funny Theme</option>
+      <option value="10_playful_duck">🦆 [Playful] Fluffing a Duck Quirky Theme</option>
+      <option value="none">🔇 No Background Music</option>
+      <option value="custom">📁 Load Music from Computer...</option>
+    </select>
+    <button id="bgmPreviewBtn" title="Play 10s preview of selected BGM" style="padding: 7px 10px; font-size: 12px; background: #1f2230; border: 1px solid #2f3348; color: #e2e8f0; border-radius: 6px; cursor: pointer;">▶️</button>
+    <span id="customBgmLabel" style="display:none; font-size: 11px; color: #f59e0b; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+    <button id="toggleAdvBtn" type="button" style="padding: 7px 11px; font-size: 12px; background: transparent; border: 1px solid #2f3348; color: #94a3b8; border-radius: 6px; cursor: pointer;">⚙️ Advanced ▾</button>
+  </div>
+  <div id="status" class="footer-center">Add photos or videos to get started.</div>
+  <div class="footer-right">
+    <button id="openBtn" style="display:none; padding:9px 14px; font-size:13px;">📁 Reveal in Folder</button>
+    <button class="primary build-hero-btn" id="buildBtn" disabled>🎬 Generate Shorts Video</button>
+  </div>
+</footer>
+
+<script>
+  const scenesEl = document.getElementById('scenes');
+  const buildBtn = document.getElementById('buildBtn');
+  const statusEl = document.getElementById('status');
+  const openBtn = document.getElementById('openBtn');
+  const toggleAdvBtn = document.getElementById('toggleAdvBtn');
+  const advSettingsDrawer = document.getElementById('advSettingsDrawer');
+
+  toggleAdvBtn.addEventListener('click', () => {
+    const isHidden = advSettingsDrawer.style.display === 'none';
+    advSettingsDrawer.style.display = isHidden ? 'block' : 'none';
+    const isEn = currentLang === 'en';
+    toggleAdvBtn.textContent = isHidden
+      ? (isEn ? '⚙️ Advanced ▴' : '⚙️ 상세 옵션 ▴')
+      : (isEn ? '⚙️ Advanced ▾' : '⚙️ 상세 옵션 ▾');
+    toggleAdvBtn.style.color = isHidden ? '#38bdf8' : '#94a3b8';
+    toggleAdvBtn.style.borderColor = isHidden ? '#38bdf8' : '#2f3348';
+  });
+
+  let scenes = [];
+  let lastOutput = null;
+
+  function setStep(id) {
+    document.querySelectorAll('.step').forEach((s) => s.classList.remove('on'));
+    if (id) document.getElementById(id).classList.add('on');
+  }
+
+  // SFX 미리듣기 재생기 (Web Audio API 기반 0ms 즉각 재생)
+  function playAudioPreview(base64Uri) {
+    if (!base64Uri) return;
+    const a = new Audio(base64Uri);
+    a.play().catch(() => {});
+  }
+
+  function getMotionLabel(motion) {
+    const isEn = currentLang === 'en';
+    switch (motion) {
+      case 'zoomIn': return isEn ? '🔍 Zoom In' : '🔍 줌인';
+      case 'zoomOut': return isEn ? '🔎 Zoom Out' : '🔎 줌아웃';
+      case 'tiltDown': return isEn ? '⬇️ Tilt Down' : '⬇️ 틸트다운';
+      case 'tiltUp': return isEn ? '⬆️ Tilt Up' : '⬆️ 틸트업';
+      case 'fade': return isEn ? '✨ Fade' : '✨ 페이드';
+      case 'none': return isEn ? '⏹️ Static' : '⏹️ 정지';
+      case 'auto':
+      case 'kenburns':
+      default: return isEn ? '🎬 Motion' : '🎬 줌·틸트 모션';
+    }
+  }
+
+  function render() {
+    const isEn = currentLang === 'en';
+    scenesEl.innerHTML = '';
+    if (!scenes.length) {
+      scenesEl.innerHTML = isEn
+        ? '<div class="empty">No scenes added yet.<br>Click <b>[📷 Add Photos]</b> or <b>[🎬 Add Videos]</b> in the toolbar to get started.</div>'
+        : '<div class="empty">아직 등록된 장면이 없습니다.<br>상단의 <b>[📷 사진 추가]</b> 또는 <b>[🎬 영상 추가]</b> 버튼을 눌러 시작해 보세요.</div>';
+    }
+    scenes.forEach((scene, i) => {
+      const isVideo = scene.type === 'video' || !!scene.video;
+      const isBg = scene.image && scene.image.startsWith('bg:');
+      const div = document.createElement('div');
+      div.className = 'scene';
+      div.innerHTML = `
+        <div class="scene-thumb-col">
+          <div class="scene-thumb" data-thumb="${i}" title="${isEn ? 'Click to replace with local photo or video' : '클릭하여 내 사진/영상으로 교체'}">
+            ${isBg
+              ? `<div style="font-size:18px; font-weight:800; color:#64748b; display:flex; height:100%; align-items:center; justify-content:center;">${i + 1}</div>`
+              : `<img src="file://${scene.image.replace(/\\/g, '/')}">`}
+            ${scene.isGenerating ? `<div style="position:absolute; inset:0; background:rgba(15,23,42,0.82); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:#38bdf8; font-size:11px; font-weight:700; z-index:3;"><span style="font-size:18px;">✨</span><span>${isEn ? 'AI Analyzing...' : 'AI 분석 중'}</span></div>` : ''}
+            <div class="motion-badge">${isVideo ? (isEn ? '🎬 Video' : '🎬 영상') : getMotionLabel(scene.motion || 'auto')}</div>
+          </div>
+          <div class="thumb-btns">
+            <button class="action-btn change-img-btn" data-ci="${i}" title="${isEn ? 'Replace with local photo or video' : '내 컴퓨터의 사진 또는 영상으로 교체'}">${isEn ? '🔄 Replace Media' : '🔄 미디어 교체'}</button>
+          </div>
+        </div>
+        <div class="body">
+          <div class="row-top">
+            <span class="num">${isEn ? `Scene ${i + 1}` : `장면 ${i + 1}`}</span>
+            ${scene.customAudio
+              ? `<span style="background:rgba(244,63,94,0.2); color:#fb7185; border:1px solid rgba(244,63,94,0.45); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:700;">${isEn ? '🎤 My Voice Dubbed' : '🎤 내 목소리 직접 녹음'}</span>`
+              : (scene.originalVoice
+                  ? `<span style="background:rgba(16,185,129,0.2); color:#10b981; border:1px solid rgba(16,185,129,0.4); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:700;">${isEn ? '🎙️ Voice Detected (Whisper)' : '🎙️ 말소리 감지 (위스퍼)'}</span>`
+                  : `<span style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); border-radius:6px; padding:2px 8px; font-size:11px; font-weight:700;">${isEn ? '✨ AI Story Script' : '✨ AI 스토리 대본'}</span>`)}
+            ${isVideo ? `<span style="font-size:12px; color:#38bdf8; font-weight:700;">🎬 ${scene.title || (scene.video ? scene.video.split('/').pop() : (isEn ? 'Video Clip' : '영상 클립'))}</span>` : ''}
+            <button class="remove" data-r="${i}" style="margin-left:auto;">${isEn ? '🗑️ Delete' : '🗑️ 삭제'}</button>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin:2px 0 4px 0; flex-wrap:wrap; gap:6px;">
+            <span style="font-size:11.5px; color:#94a3b8; font-weight:600;">${isEn ? '💬 Subtitle Text (Script / Speech):' : '💬 하단 자막 내용 (대본 / 말소리):'}</span>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <button type="button" class="rec-voice-btn" data-rec="${i}" style="background:${scene.isRecording ? 'rgba(239,68,68,0.3)' : 'rgba(244,63,94,0.14)'}; border:1px solid ${scene.isRecording ? '#ef4444' : 'rgba(244,63,94,0.4)'}; color:${scene.isRecording ? '#fecaca' : '#fb7185'}; font-size:11px; font-weight:700; border-radius:4px; padding:2px 8px; cursor:pointer;" title="${isEn ? 'Record voice via mic for this scene (auto-sync duration)' : '마이크로 내 목소리를 직접 녹음하여 이 장면에 더빙합니다 (영상 길이 자동 맞춤)'}">${scene.isRecording ? (isEn ? '⏹️ Stop Recording' : '⏹️ 녹음 완료') : (isEn ? '🎤 Record Voice' : '🎤 직접 녹음')}</button>
+              ${scene.customAudio ? `<button type="button" class="play-rec-btn" data-playrec="${i}" style="background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); color:#34d399; font-size:11px; font-weight:700; border-radius:4px; padding:2px 7px; cursor:pointer;" title="${isEn ? 'Play my recorded voice' : '녹음된 내 목소리 들어보기'}">${isEn ? '▶️ Play Audio' : '▶️ 내 녹음'}</button><button type="button" class="clear-rec-btn" data-clearrec="${i}" style="background:rgba(148,163,184,0.15); border:1px solid rgba(148,163,184,0.35); color:#cbd5e1; font-size:10.5px; border-radius:4px; padding:2px 6px; cursor:pointer;" title="${isEn ? 'Cancel recording and revert to AI voice' : '녹음 취소하고 AI 보이스로 전환'}">✕</button>` : ''}
+              ${!scene.isGenerating ? `<button type="button" class="ai-single-btn" data-aisingle="${i}" style="background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.35); color:#38bdf8; font-size:11px; font-weight:700; border-radius:4px; padding:2px 8px; cursor:pointer;" title="${isEn ? 'Regenerate 1-line AI script for this scene' : '이 사진/영상을 보고 AI가 1줄 나레이션을 다시 작성합니다'}">${isEn ? '✨ AI Write Line' : '✨ AI 한줄 작성'}</button>` : ''}
+            </div>
+          </div>
+          <textarea data-i="${i}" ${scene.isGenerating ? 'readonly style="opacity:0.65; cursor:wait; border-color:#38bdf8;"' : ''} placeholder="${scene.originalVoice ? (isEn ? 'Speech extracted from video. Edit subtitles directly.' : '영상에서 추출된 실제 말소리 자막입니다. 오타나 내용을 직접 수정하세요.') : (isVideo ? (isEn ? 'Narration / Subtitle for this clip' : '이 영상 클립의 나레이션/자막') : (isEn ? 'Enter narration for this scene' : '이 장면의 나레이션을 적어 주세요'))}">${scene.narration || ''}</textarea>
+          <div class="scene-adv-toggle" data-adv-toggle="${i}">
+            <span>${isEn ? '⚙️ Details (Motion, Highlight, SFX, Tag) ▾' : '⚙️ 세부 옵션 (모션, 강조단어, 효과음, 태그) ▾'}</span>
+          </div>
+          <div class="scene-adv-box" id="adv-box-${i}" style="display:none;">
+            <input class="tag-input" data-tag="${i}" placeholder="${isEn ? 'Context Tag (Optional)' : '상황태그 (선택사항, 괄호없이 입력)'}" value="${scene.tag || ''}" style="width:140px; font-size:11.5px; padding:4px 8px;">
+            ${isVideo
+              ? ''
+              : `<select class="motion-select" data-motion="${i}" style="font-size:11.5px; padding:4px 8px;">
+                  <option value="auto" ${scene.motion === 'auto' || !scene.motion || scene.motion === 'kenburns' ? 'selected' : ''}>${isEn ? '🎬 Motion: Auto Cycle' : '🎬 모션: 자동 (줌인·아웃·틸트 순환)'}</option>
+                  <option value="zoomIn" ${scene.motion === 'zoomIn' ? 'selected' : ''}>${isEn ? '🔍 Zoom In' : '🔍 줌인 (Zoom In)'}</option>
+                  <option value="zoomOut" ${scene.motion === 'zoomOut' ? 'selected' : ''}>${isEn ? '🔎 Zoom Out' : '🔎 줌아웃 (Zoom Out)'}</option>
+                  <option value="tiltDown" ${scene.motion === 'tiltDown' ? 'selected' : ''}>${isEn ? '⬇️ Tilt Down (Top ➔ Bottom)' : '⬇️ 틸트 다운 (위 ➔ 아래)'}</option>
+                  <option value="tiltUp" ${scene.motion === 'tiltUp' ? 'selected' : ''}>${isEn ? '⬆️ Tilt Up (Bottom ➔ Top)' : '⬆️ 틸트 업 (아래 ➔ 위)'}</option>
+                  <option value="fade" ${scene.motion === 'fade' ? 'selected' : ''}>${isEn ? '✨ Filmic Fade In/Out' : '✨ 페이드 인아웃 (부드러운 전환)'}</option>
+                  <option value="none" ${scene.motion === 'none' ? 'selected' : ''}>${isEn ? '⏹️ Static (No Motion)' : '⏹️ 정지 화면 (Static)'}</option>
+                </select>`}
+            <input class="kw-input" data-k="${i}" placeholder="${isEn ? 'Yellow Highlight Keyword' : '노란색 강조 단어'}" value="${scene.keyword || ''}" style="flex:1; min-width:110px; font-size:11.5px; padding:4px 8px;">
+            <select class="sfx-select" data-sfx="${i}" style="font-size:11.5px; padding:4px 8px;">
+              <option value="auto" ${scene.sfx === 'auto' || !scene.sfx ? 'selected' : ''}>${isEn ? 'SFX: Auto Match' : '효과음: 자동 매칭'}</option>
+              <option value="whoosh" ${scene.sfx === 'whoosh' ? 'selected' : ''}>${isEn ? 'Whoosh' : '휙 (whoosh)'}</option>
+              <option value="ding" ${scene.sfx === 'ding' ? 'selected' : ''}>${isEn ? 'Ding' : '띵 (ding)'}</option>
+              <option value="vineBoom" ${scene.sfx === 'vineBoom' ? 'selected' : ''}>${isEn ? 'Vine Boom' : '쿵 (vineBoom)'}</option>
+              <option value="mouseClick" ${scene.sfx === 'mouseClick' ? 'selected' : ''}>${isEn ? 'Mouse Click' : '딸깍 (mouseClick)'}</option>
+              <option value="pageTurn" ${scene.sfx === 'pageTurn' ? 'selected' : ''}>${isEn ? 'Page Turn' : '촤락 (pageTurn)'}</option>
+              <option value="uiSwitch" ${scene.sfx === 'uiSwitch' ? 'selected' : ''}>${isEn ? 'UI Switch' : '탁 (uiSwitch)'}</option>
+              <option value="none" ${scene.sfx === 'none' ? 'selected' : ''}>${isEn ? 'No SFX' : '효과음 없음'}</option>
+            </select>
+            <button class="sfx-preview-btn" data-psfx="${i}" style="padding:4px 8px; font-size:11px;">🔊</button>
+          </div>
+        </div>`;
+      scenesEl.appendChild(div);
+    });
+
+    scenesEl.querySelectorAll('textarea').forEach((ta) => ta.addEventListener('input', (e) => { scenes[+e.target.dataset.i].narration = e.target.value; sync(); }));
+    scenesEl.querySelectorAll('input.kw-input').forEach((inp) => inp.addEventListener('input', (e) => { scenes[+e.target.dataset.k].keyword = e.target.value; }));
+    scenesEl.querySelectorAll('input.tag-input').forEach((inp) => inp.addEventListener('input', (e) => { scenes[+e.target.dataset.tag].tag = e.target.value; }));
+    scenesEl.querySelectorAll('.motion-select').forEach((sel) => sel.addEventListener('change', (e) => { scenes[+e.target.dataset.motion].motion = e.target.value; render(); sync(); }));
+    scenesEl.querySelectorAll('.sfx-select').forEach((sel) => sel.addEventListener('change', (e) => { scenes[+e.target.dataset.sfx].sfx = e.target.value; }));
+    scenesEl.querySelectorAll('.sfx-preview-btn').forEach((btn) => btn.addEventListener('click', async (e) => {
+      const idx = +e.target.dataset.psfx;
+      const curSfx = scenes[idx].sfx || 'whoosh';
+      const kind = curSfx === 'auto' ? 'whoosh' : curSfx;
+      const uri = await window.agent.previewSfx(kind);
+      playAudioPreview(uri);
+    }));
+
+    scenesEl.querySelectorAll('.scene-adv-toggle').forEach((toggle) => toggle.addEventListener('click', (e) => {
+      const idx = e.currentTarget.dataset.advToggle;
+      const box = document.getElementById(`adv-box-${idx}`);
+      const isHidden = box.style.display === 'none';
+      box.style.display = isHidden ? 'flex' : 'none';
+      const isEn = currentLang === 'en';
+      e.currentTarget.querySelector('span').textContent = isHidden
+        ? (isEn ? '⚙️ Collapse Options ▴' : '⚙️ 세부 옵션 접기 ▴')
+        : (isEn ? '⚙️ Details (Motion, Highlight, SFX, Tag) ▾' : '⚙️ 세부 옵션 (모션, 강조단어, 효과음, 태그) ▾');
+    }));
+
+    // 직접 녹음 (내 목소리 더빙 + 영상 길이 자동 싱크)
+    scenesEl.querySelectorAll('.rec-voice-btn').forEach((btn) => btn.addEventListener('click', async (e) => {
+      const idx = +e.currentTarget.dataset.rec;
+      const s = scenes[idx];
+      if (!s) return;
+      const isEn = currentLang === 'en';
+
+      // 이미 녹음 중이면 정지 및 저장
+      if (activeMediaRecorder && activeRecordingSceneIdx === idx) {
+        activeMediaRecorder.stop();
+        return;
+      }
+      if (activeMediaRecorder) {
+        activeMediaRecorder.stop();
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        activeRecordedChunks = [];
+        activeRecordingSceneIdx = idx;
+        s.isRecording = true;
+        render();
+        statusEl.textContent = isEn
+          ? `🎤 Recording Scene ${idx + 1}... Speak and click [⏹️ Stop Recording] when done.`
+          : `🎤 장면 ${idx + 1} 녹음 중입니다... 대사를 말씀하신 뒤 [⏹️ 녹음 완료] 버튼을 눌러주세요.`;
+
+        const recorder = new MediaRecorder(stream);
+        activeMediaRecorder = recorder;
+        recorder.ondataavailable = (ev) => {
+          if (ev.data && ev.data.size > 0) activeRecordedChunks.push(ev.data);
+        };
+        recorder.onstop = async () => {
+          stream.getTracks().forEach((t) => t.stop());
+          s.isRecording = false;
+          activeMediaRecorder = null;
+          activeRecordingSceneIdx = null;
+          statusEl.textContent = isEn
+            ? `⏳ Saving Scene ${idx + 1} voice recording and recognizing subtitles...`
+            : `⏳ 장면 ${idx + 1} 녹음 음성을 저장하고 자막을 자동 인식 중입니다...`;
+          render();
+          try {
+            const blob = new Blob(activeRecordedChunks, { type: 'audio/webm' });
+            const arrayBuffer = await blob.arrayBuffer();
+            const res = await window.agent.saveRecordedAudio({
+              sceneIndex: idx,
+              buffer: new Uint8Array(arrayBuffer),
+            });
+            if (res && res.success) {
+              s.customAudio = res.audioPath;
+              s.originalVoice = false;
+              if (res.text && res.text.trim()) {
+                s.narration = res.text.trim();
+                const words = s.narration.split(/\s+/).filter((w) => w.length >= 2);
+                if (words.length && !s.keyword) {
+                  s.keyword = words[Math.floor(words.length / 2)];
+                }
+              }
+              statusEl.textContent = isEn
+                ? `✅ Scene ${idx + 1} voice recording complete! Video speed and duration will automatically sync.`
+                : `✅ 장면 ${idx + 1} 내 목소리 녹음 완료! 렌더링 시 녹음 길이에 맞춰 영상 속도와 길이가 자동으로 딱 맞게 조절됩니다.`;
+            } else {
+              alert((isEn ? 'Failed to save recording: ' : '녹음 파일 저장 실패: ') + ((res && res.error) || (isEn ? 'Unknown error' : '알 수 없는 오류')));
+            }
+          } catch (err) {
+            alert((isEn ? 'Recording error: ' : '녹음 처리 오류: ') + err.message);
+          }
+          render();
+          sync();
+        };
+        recorder.start();
+      } catch (err) {
+        alert((isEn ? 'Microphone permission check failed: ' : '마이크 권한을 확인할 수 없습니다: ') + err.message);
+      }
+    }));
+
+    scenesEl.querySelectorAll('.play-rec-btn').forEach((btn) => btn.addEventListener('click', (e) => {
+      const idx = +e.currentTarget.dataset.playrec;
+      const s = scenes[idx];
+      if (s && s.customAudio) {
+        playAudioPreview('file://' + encodeURI(s.customAudio));
+      }
+    }));
+
+    scenesEl.querySelectorAll('.clear-rec-btn').forEach((btn) => btn.addEventListener('click', (e) => {
+      const idx = +e.currentTarget.dataset.clearrec;
+      const s = scenes[idx];
+      if (s) {
+        delete s.customAudio;
+        render();
+        sync();
+        const isEn = currentLang === 'en';
+        statusEl.textContent = isEn
+          ? `Scene ${idx + 1} custom recording removed; reverted to AI voice.`
+          : `장면 ${idx + 1}의 직접 녹음을 해제하고 AI 나레이션 보이스로 전환했습니다.`;
+      }
+    }));
+
+    // 개별 장면 AI 한줄 작성 버튼 (사진 및 영상 모두 지원!)
+    scenesEl.querySelectorAll('.ai-single-btn').forEach((btn) => btn.addEventListener('click', async (e) => {
+      const idx = +e.target.dataset.aisingle;
+      const s = scenes[idx];
+      if (!s) return;
+      const isEn = currentLang === 'en';
+      s.originalVoice = false; // 위스퍼 오탐지였던 경우에도 AI 스토리 모드로 즉시 전환
+      s.isGenerating = true;
+      s.narration = isEn ? '✨ AI is analyzing frame and writing 1-line narration...' : '✨ AI가 화면을 분석하여 맞춤 1줄 나레이션을 작성 중입니다...';
+      render();
+      statusEl.textContent = isEn
+        ? `✨ Analyzing scene ${idx + 1} with AI Vision to generate narration...`
+        : `✨ 장면 ${idx + 1} 화면을 정밀 분석하여 AI 맞춤 나레이션을 새로 작성 중입니다...`;
+      try {
+        const drafts = await window.agent.analyze({scenes: [{
+          image: s.image,
+          narration: '',
+          title: s.title || ''
+        }], lang: currentLang});
+        if (drafts && drafts[0]) {
+          s.narration = (drafts[0].narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+          s.keyword = (drafts[0].keyword || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+          if (drafts[0].sfx) s.sfx = drafts[0].sfx;
+        }
+      } catch (err) {
+        alert((isEn ? 'AI Narration Error: ' : 'AI 나레이션 작성 오류: ') + err.message);
+      }
+      delete s.isGenerating;
+      render();
+      sync();
+      statusEl.textContent = isEn
+        ? `✅ Scene ${idx + 1} AI narration generated successfully!`
+        : `✅ 장면 ${idx + 1} AI 맞춤 나레이션 작성이 완료되었습니다!`;
+    }));
+
+    // 1) 썸네일 클릭 또는 '미디어 교체' 버튼으로 내 로컬 미디어 교체
+    const handlePickCustomMedia = async (idx) => {
+      const isEn = currentLang === 'en';
+      const s = scenes[idx];
+      const isCurVideo = s.type === 'video' || !!s.video;
+      const files = isCurVideo ? await window.agent.pickVideos() : await window.agent.pickImages();
+      if (files && files.length) {
+        const file = typeof files[0] === 'string' ? files[0] : (files[0].path || files[0].thumb);
+        if (isCurVideo) {
+          s.video = file;
+          s.image = (typeof files[0] === 'object' && files[0].thumb) ? files[0].thumb : file;
+          s.title = (typeof files[0] === 'object' && files[0].name) ? files[0].name : file.split('/').pop();
+          s.isGenerating = true;
+          s.narration = isEn ? '✨ AI is analyzing new video...' : '✨ AI가 교체된 영상을 분석하여 맞춤 나레이션을 작성 중입니다...';
+          render();
+          try {
+            const drafts = await window.agent.analyze({scenes: [{image: s.image, narration: '', title: s.title}], lang: currentLang});
+            if (drafts && drafts[0]) {
+              s.narration = (drafts[0].narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+              s.keyword = (drafts[0].keyword || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+              if (drafts[0].sfx) s.sfx = drafts[0].sfx;
+            }
+          } catch (_) {}
+          delete s.isGenerating;
+          render();
+          sync();
+          statusEl.textContent = isEn ? `✔ Scene ${idx + 1} video replaced & analyzed!` : `✔ 장면 ${idx + 1} 영상 교체 및 AI 분석 완료!`;
+        } else {
+          s.image = file;
+          s.narration = isEn ? '✨ AI is analyzing new photo...' : '✨ AI가 새 사진을 보고 맞춤 나레이션을 작성 중입니다...';
+          s.isGenerating = true;
+          render();
+          statusEl.textContent = isEn ? `✨ Analyzing scene ${idx + 1} photo with AI Vision...` : `✨ 장면 ${idx + 1} 새 사진을 분석하여 AI 나레이션을 다시 작성 중입니다...`;
+          try {
+            const drafts = await window.agent.analyze({scenes: [{image: file, narration: '', title: ''}], lang: currentLang});
+            if (drafts && drafts[0]) {
+              s.narration = (drafts[0].narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+              s.keyword = (drafts[0].keyword || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+              if (drafts[0].sfx) s.sfx = drafts[0].sfx;
+            }
+          } catch (_) {
+            s.narration = isEn ? `Scene ${idx + 1} elegant moment.` : `장면 ${idx + 1}의 새로운 스타일과 매력적인 모습입니다.`;
+          }
+          delete s.isGenerating;
+          render();
+          sync();
+          statusEl.textContent = isEn ? `✔ Scene ${idx + 1} photo replaced & AI narration ready!` : `✔ 장면 ${idx + 1} 사진 교체 및 AI 나레이션 작성 완료!`;
+        }
+      }
+    };
+    scenesEl.querySelectorAll('.scene-thumb').forEach((thumb) => thumb.addEventListener('click', (e) => handlePickCustomMedia(+e.currentTarget.dataset.thumb)));
+    scenesEl.querySelectorAll('.change-img-btn').forEach((btn) => btn.addEventListener('click', (e) => handlePickCustomMedia(+e.target.dataset.ci)));
+
+    scenesEl.querySelectorAll('.remove').forEach((btn) => btn.addEventListener('click', (e) => { scenes.splice(+e.target.dataset.r, 1); render(); sync(); }));
+    sync();
+  }
+
+  let activeMediaRecorder = null;
+  let activeRecordedChunks = [];
+  let activeRecordingSceneIdx = null;
+
+  function sync() {
+    const isEn = currentLang === 'en';
+    const hasVideos = scenes.some((s) => s.type === 'video' || s.video);
+    const hasValidScenes = scenes.length > 0 && (hasVideos || scenes.every((s) => (s.narration || '').trim()));
+    buildBtn.disabled = !hasValidScenes;
+    if (scenes.length) {
+      if (hasVideos) {
+        const vCount = scenes.filter((s) => s.type === 'video' || s.video).length;
+        statusEl.textContent = isEn
+          ? `${scenes.length} scenes registered (including ${vCount} video clips). Click [Generate Shorts Video] to build.`
+          : `영상 클립 ${vCount}개 포함, 총 ${scenes.length}개 장면 등록 완료. [원클릭 영상 만들기]를 누르면 보이스·자막·효과음이 자동 합성됩니다.`;
+      } else {
+        statusEl.textContent = buildBtn.disabled
+          ? (isEn ? 'Please enter narration for each scene.' : '장면마다 나레이션을 적어주세요.')
+          : (isEn ? 'Ready! Click [🎬 Generate Shorts Video] to build.' : '준비됐습니다. [🎬 원클릭 영상 만들기]를 누르세요.');
+      }
+    } else {
+      statusEl.textContent = isEn
+        ? 'Add photos or videos to get started.'
+        : '사진이나 영상을 추가하면 시작할 수 있습니다.';
+    }
+  }
+
+  // 0. 새 프로젝트 만들기 (전체 초기화)
+  document.getElementById('newBtn').addEventListener('click', () => {
+    const isEn = currentLang === 'en';
+    if (scenes.length && !confirm(isEn ? 'Clear current scenes and start a new project?' : '현재 작업 중인 장면들을 모두 지우고 새 프로젝트를 시작하시겠습니까?')) {
+      return;
+    }
+    scenes = [];
+    document.getElementById('titleInput').value = '';
+    document.getElementById('titleSizeSelect').value = 'large';
+    document.getElementById('titleColorSelect').value = 'mint';
+    document.getElementById('showTitleChk').checked = true;
+    document.getElementById('showSubtitlesChk').checked = true;
+    updateTitleSubState();
+    document.getElementById('videoInfo').style.display = 'none';
+    document.getElementById('openBtn').style.display = 'none';
+    stopBgmPreview();
+    customBgmPath = null;
+    document.getElementById('bgmSelect').value = '03_piano_forest';
+    document.getElementById('customBgmLabel').style.display = 'none';
+    statusEl.className = '';
+    statusEl.textContent = isEn
+      ? 'New project ready. Click [Add Photos] or [Add Videos] to get started.'
+      : '새 프로젝트가 준비되었습니다. 상단의 [사진 추가] 또는 [영상 추가]를 눌러보세요.';
+    setStep(null);
+    render();
+    sync();
+  });
+
+  // 영상 추가: 대사가 있는 인터뷰/토크 영상은 위스퍼로 자막 추출, 풍경/사찰/무음 영상은 Gemini Vision으로 정밀 화면 분석!
+  document.getElementById('videoBtn').addEventListener('click', async () => {
+    const files = await window.agent.pickVideos();
+    if (!files.length) return;
+    const isEn = currentLang === 'en';
+    statusEl.textContent = isEn
+      ? 'Analyzing video audio and visual frames with AI...'
+      : '선택한 영상의 음성 및 화면 프레임을 AI로 정밀 분석하는 중입니다...';
+    setStep('st-voice');
+
+    const silentVideoSceneIndices = [];
+
+    for (let fIdx = 0; fIdx < files.length; fIdx++) {
+      const f = files[fIdx];
+      const vPath = typeof f === 'string' ? f : f.path;
+      const vName = typeof f === 'string' ? f.split('/').pop() : f.name;
+      const vThumb = (typeof f === 'object' && f.thumb) ? f.thumb : null;
+
+      statusEl.textContent = isEn
+        ? `[${fIdx + 1}/${files.length}] Detecting speech/audio in ${vName}...`
+        : `[${fIdx + 1}/${files.length}] ${vName} 음성/소음 판별 중...`;
+      let res = null;
+      try {
+        res = await window.agent.transcribeVideo(vPath);
+      } catch (err) {
+        res = null;
+      }
+
+      const validSegments = (res && res.success && res.segments)
+        ? res.segments.map((seg) => ({
+            ...seg,
+            text: (seg.text || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim(),
+          })).filter((seg) => seg.text && !seg.text.match(/^(음악|박수|웃음|music|applause|laughter|종소리|새소리|감사합니다|고맙습니다)$/i))
+        : [];
+
+      if (validSegments.length > 0) {
+        // 실제 사람 말소리가 있는 경우: 위스퍼가 받아쓴 문장별로 타임라인 장면 생성
+        validSegments.forEach((seg) => {
+          const words = seg.text.split(/\s+/).filter((w) => w.length >= 2);
+          const autoKw = words.length ? words[Math.floor(words.length / 2)] : '';
+          scenes.push({
+            type: 'video',
+            video: vPath,
+            image: seg.thumb || vThumb || 'bg:' + scenes.length,
+            title: `${vName} (${seg.start.toFixed(1)}s~${seg.end.toFixed(1)}s)`,
+            narration: seg.text,
+            keyword: autoKw.replace(/[\[\]\{\}]/g, '').trim(),
+            originalVoice: true,
+            start: seg.start,
+            end: seg.end,
+            motion: 'none',
+            sfx: 'none',
+            tag: '',
+          });
+        });
+      } else {
+        // 대사 없는 풍경/스케치 영상: 먼저 슬롯을 등록한 뒤 일괄 AI 비전 분석으로 연결된 스토리 생성
+        const newIdx = scenes.length;
+        scenes.push({
+          type: 'video',
+          video: vPath,
+          image: vThumb || 'bg:' + scenes.length,
+          title: vName,
+          narration: isEn ? '✨ AI is analyzing video frames to craft narration...' : '✨ AI가 영상 화면을 분석하여 맞춤 나레이션을 작성 중입니다...',
+          keyword: '',
+          originalVoice: false,
+          start: 0,
+          end: 0,
+          motion: 'kenburns',
+          sfx: 'whoosh',
+          tag: '',
+          isGenerating: true,
+        });
+        silentVideoSceneIndices.push(newIdx);
+      }
+    }
+
+    render();
+
+    if (silentVideoSceneIndices.length > 0) {
+      statusEl.textContent = isEn
+        ? `✨ Analyzing ${silentVideoSceneIndices.length} silent video clips with AI Vision...`
+        : `✨ 대사가 없는 영상 ${silentVideoSceneIndices.length}개의 화면(풍경·인물·분위기)을 AI 비전으로 정밀 분석 중입니다...`;
+      setStep('st-plan');
+      try {
+        const itemsToAnalyze = silentVideoSceneIndices.map((sIdx) => ({
+          image: scenes[sIdx].image,
+          narration: '',
+          title: scenes[sIdx].title || '',
+        }));
+        const drafts = await window.agent.analyze({scenes: itemsToAnalyze, lang: currentLang});
+        silentVideoSceneIndices.forEach((sIdx, dIdx) => {
+          const target = scenes[sIdx];
+          if (!target) return;
+          const d = drafts && drafts[dIdx];
+          if (d && d.narration) {
+            target.narration = (d.narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+            target.keyword = (d.keyword || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+            if (d.sfx) target.sfx = d.sfx;
+          } else {
+            target.narration = isEn ? 'A serene visual moment in nature.' : '고즈넉한 풍경 속에 마음이 편안해지는 순간입니다.';
+            target.keyword = isEn ? 'Serene' : '편안해지는 순간';
+          }
+          delete target.isGenerating;
+        });
+      } catch (e) {
+        console.error('AI 영상 비전 분석 오류:', e);
+        silentVideoSceneIndices.forEach((sIdx) => {
+          if (scenes[sIdx]) {
+            scenes[sIdx].narration = isEn ? 'A captivating moment with relaxing atmosphere.' : '여유로운 분위기와 아름다운 풍경이 돋보이는 순간입니다.';
+            scenes[sIdx].keyword = isEn ? 'Atmosphere' : '아름다운 풍경';
+            delete scenes[sIdx].isGenerating;
+          }
+        });
+      }
+    }
+
+    const info = document.getElementById('videoInfo');
+    info.style.display = '';
+    const origCount = scenes.filter((s) => s.originalVoice).length;
+    const aiCount = scenes.length - origCount;
+    info.textContent = isEn
+      ? `Videos registered: Whisper subtitles ${origCount} + AI vision scripts ${aiCount} (${scenes.length} scenes total)`
+      : `영상 등록 완료: 위스퍼 음성 자막 ${origCount}개 구간 + AI 화면 분석 대본 ${aiCount}개 구간 (총 ${scenes.length}개 장면)`;
+    statusEl.textContent = isEn
+      ? `✔ Video analysis and scripts ready! Select your preferred voice or mic dubbing.`
+      : `✔ 영상 분석 및 대본 작성 완료! [🎤 직접 녹음]으로 내 목소리를 넣거나 연령대별 AI 보이스를 선택해 보세요.`;
+    render();
+    setStep('st-plan');
+    sync();
+  });
+
+  // 설정 패널 및 메인 화면 연령대별 보이스 연동
+  const settingsPanel = document.getElementById('settingsPanel');
+  const voiceSelectEl = document.getElementById('voiceSelect');
+  const mainVoiceSelectEl = document.getElementById('mainVoiceSelect');
+  const voicePreviewBtn = document.getElementById('voicePreviewBtn');
+
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    settingsPanel.style.display = settingsPanel.style.display === 'none' ? '' : 'none';
+  });
+
+  // 메인 화면 보이스 변경 시 설정창과 자동 동기화 + 즉시 저장
+  mainVoiceSelectEl.addEventListener('change', async () => {
+    voiceSelectEl.value = mainVoiceSelectEl.value;
+    await window.agent.saveSettings({
+      voice: mainVoiceSelectEl.value,
+    });
+    const label = mainVoiceSelectEl.options[mainVoiceSelectEl.selectedIndex].text;
+    const isEn = currentLang === 'en';
+    statusEl.textContent = isEn
+      ? `🗣️ Narration voice set to [${label}].`
+      : `🗣️ 나레이션 보이스가 [${label}](으)로 설정되었습니다.`;
+  });
+
+  voiceSelectEl.addEventListener('change', () => {
+    mainVoiceSelectEl.value = voiceSelectEl.value;
+  });
+
+  // 연령대별 AI 보이스 미리듣기 버튼
+  voicePreviewBtn.addEventListener('click', async () => {
+    const selectedVoice = mainVoiceSelectEl.value;
+    const origText = voicePreviewBtn.textContent;
+    const isEn = currentLang === 'en';
+    voicePreviewBtn.disabled = true;
+    voicePreviewBtn.textContent = isEn ? '⏳ Generating...' : '⏳ 생성중';
+    statusEl.textContent = isEn
+      ? `🔊 Generating voice sample for ${selectedVoice}...`
+      : `🔊 선택한 보이스(${selectedVoice}) 샘플 음성을 생성하고 있습니다...`;
+    try {
+      const sampleText = scenes.length && scenes[0].narration
+        ? scenes[0].narration
+        : (isEn ? 'Hello! This is a voice sample for your Shorts video.' : '안녕하세요, 선택한 연령대 나레이션 목소리 샘플입니다.');
+      const res = await window.agent.previewVoice({
+        voice: selectedVoice,
+        text: sampleText,
+      });
+      if (res && res.success && res.uri) {
+        playAudioPreview(res.uri);
+        statusEl.textContent = isEn
+          ? `🔊 Playing preview for [${mainVoiceSelectEl.options[mainVoiceSelectEl.selectedIndex].text}]`
+          : `🔊 [${mainVoiceSelectEl.options[mainVoiceSelectEl.selectedIndex].text}] 미리듣기 재생 중`;
+      } else {
+        alert((isEn ? 'Voice preview failed: ' : '보이스 미리듣기 실패: ') + ((res && res.error) || (isEn ? 'Please check your API key.' : 'API 키를 확인해주세요.')));
+      }
+    } catch (err) {
+      alert((isEn ? 'Voice preview error: ' : '보이스 미리듣기 오류: ') + err.message);
+    } finally {
+      voicePreviewBtn.disabled = false;
+      voicePreviewBtn.textContent = origText;
+    }
+  });
+
+  document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+    mainVoiceSelectEl.value = voiceSelectEl.value;
+    await window.agent.saveSettings({
+      apiKey: document.getElementById('apiKeyInput').value.trim(),
+      model: document.getElementById('modelInput').value.trim() || 'gemini-2.5-flash',
+      voice: voiceSelectEl.value,
+    });
+    const isEn = currentLang === 'en';
+    statusEl.textContent = isEn ? 'Settings saved successfully.' : '설정을 저장했습니다.';
+    settingsPanel.style.display = 'none';
+  });
+
+  window.agent.getSettings().then((s) => {
+    if (s.apiKey) document.getElementById('apiKeyInput').value = s.apiKey;
+    if (s.model) document.getElementById('modelInput').value = s.model;
+    if (s.voice) {
+      voiceSelectEl.value = s.voice;
+      mainVoiceSelectEl.value = s.voice;
+    }
+  });
+
+  // 자동 대본 (AI 기획): 사진 추가 즉시 Gemini AI가 사진을 분석하여 1~2문장 나레이션 자동 작성!
+  document.getElementById('addBtn').addEventListener('click', async () => {
+    const files = await window.agent.pickImages();
+    if (!files.length) return;
+
+    const isEn = currentLang === 'en';
+    const startIndex = scenes.length;
+    files.forEach((f) => scenes.push({
+      image: f,
+      narration: isEn ? '✨ AI is analyzing photo and generating narration...' : '✨ AI가 사진을 보고 맞춤 나레이션을 작성 중입니다...',
+      keyword: '',
+      motion: 'auto',
+      sfx: 'auto',
+      isGenerating: true,
+    }));
+    render();
+    sync();
+    setStep('st-plan');
+    statusEl.textContent = isEn
+      ? `✨ AI is analyzing ${files.length} photos and writing narration in real-time...`
+      : `✨ AI가 ${files.length}장의 사진을 분석하여 맞춤 나레이션을 즉시 작성 중입니다...`;
+
+    try {
+      const itemsToAnalyze = files.map((f) => ({
+        image: f,
+        narration: '',
+        title: ''
+      }));
+      const drafts = await window.agent.analyze({scenes: itemsToAnalyze, lang: currentLang});
+      if (drafts && drafts.length) {
+        drafts.forEach((d, idx) => {
+          const target = scenes[startIndex + idx];
+          if (target) {
+            target.narration = (d.narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+            target.keyword = (d.keyword || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+            if (d.sfx) target.sfx = d.sfx;
+            delete target.isGenerating;
+          }
+        });
+      } else {
+        files.forEach((_, idx) => {
+          const target = scenes[startIndex + idx];
+          if (target) {
+            target.narration = isEn ? `Scene ${startIndex + idx + 1} captivating moment.` : `장면 ${startIndex + idx + 1}의 매력적인 순간입니다.`;
+            delete target.isGenerating;
+          }
+        });
+      }
+      render();
+      sync();
+      statusEl.textContent = isEn
+        ? `✅ AI narrations and subtitles ready for ${files.length} photos!`
+        : `✅ ${files.length}장의 사진에 대한 맞춤 AI 나레이션과 자막 작성이 완료되었습니다!`;
+    } catch (err) {
+      console.error('AI 나레이션 자동 작성 실패:', err);
+      files.forEach((_, idx) => {
+        const target = scenes[startIndex + idx];
+        if (target) {
+          target.narration = isEn ? `Scene ${startIndex + idx + 1} visual showcase.` : `장면 ${startIndex + idx + 1}의 멋진 스타일과 분위기가 돋보입니다.`;
+          delete target.isGenerating;
+        }
+      });
+      render();
+      sync();
+      statusEl.textContent = isEn
+        ? `⚠️ AI analysis issue occurred (${err.message || 'Check Gemini API Key'}).`
+        : `⚠️ AI 분석 중 문제가 발생했습니다 (${err.message || 'API 키 확인 필요'}).`;
+    }
+  });
+
+  // 전체 AI 대본 일괄 자동 작성 버튼 (사진 + 영상 장면 모두 화면 비전 분석 지원!)
+  document.getElementById('autoScriptBtn').addEventListener('click', async () => {
+    const isEn = currentLang === 'en';
+    if (!scenes.length) {
+      alert(isEn ? 'Please add photos or videos first.' : '먼저 사진이나 영상을 추가해 주세요.');
+      return;
+    }
+    const btn = document.getElementById('autoScriptBtn');
+    btn.disabled = true;
+    btn.textContent = isEn ? '⏳ Generating AI Script...' : '⏳ AI 작성 중...';
+    statusEl.textContent = isEn
+      ? `✨ AI is analyzing visual frames across all ${scenes.length} scenes...`
+      : `✨ AI가 전체 ${scenes.length}개 장면의 사진·영상 화면을 분석하여 1줄 대본을 작성 중입니다...`;
+
+    // 직접 녹음한 장면만 제외하고 모두 AI 비전 분석 대상으로 지정 (위스퍼 오탐지 영상도 AI 대본으로 전환)
+    scenes.forEach((s) => {
+      if (!s.customAudio) {
+        s.originalVoice = false;
+        s.isGenerating = true;
+      }
+    });
+    render();
+
+    try {
+      const targetIndices = [];
+      const itemsToAnalyze = [];
+      scenes.forEach((s, idx) => {
+        if (!s.customAudio) {
+          targetIndices.push(idx);
+          itemsToAnalyze.push({
+            image: s.image,
+            narration: '',
+            title: s.title || ''
+          });
+        }
+      });
+
+      if (itemsToAnalyze.length > 0) {
+        const drafts = await window.agent.analyze({scenes: itemsToAnalyze, lang: currentLang});
+        if (drafts && drafts.length) {
+          drafts.forEach((d, dIdx) => {
+            const sIdx = targetIndices[dIdx];
+            if (scenes[sIdx]) {
+              scenes[sIdx].narration = (d.narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+              scenes[sIdx].keyword = (d.keyword || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+              if (d.sfx) scenes[sIdx].sfx = d.sfx;
+            }
+          });
+        }
+      }
+      scenes.forEach((s) => { delete s.isGenerating; });
+      render();
+      sync();
+      statusEl.textContent = isEn
+        ? `✅ AI custom scripts generated for all ${scenes.length} scenes!`
+        : `✅ 전체 ${scenes.length}개 장면에 대한 AI 맞춤 대본이 완성되었습니다!`;
+    } catch (err) {
+      scenes.forEach((s) => { delete s.isGenerating; });
+      render();
+      sync();
+      alert((isEn ? 'AI Script Error: ' : 'AI 대본 작성 오류: ') + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = isEn ? '✨ Generate AI Script' : '✨ AI 1줄 대본 전체 작성';
+    }
+  });
+
+  window.agent.onProgress(({stage, cur, total, message}) => {
+    if (message) {
+      statusEl.textContent = message;
+      return;
+    }
+    setStep('st-' + stage);
+    const isEn = currentLang === 'en';
+    const labelMap = isEn ? {
+      plan: 'Generating AI script and outline...',
+      image: 'Rendering high-resolution visuals...',
+      voice: 'Synthesizing voice narration...',
+      render: 'Rendering kinetic motions & canvas...',
+      merge: 'Merging audio and video tracks...',
+      captions: 'Burning 3D subtitles...',
+      transcribe: 'Transcribing speech with Whisper...'
+    } : {
+      plan: '대본 및 기획 작성 중',
+      image: '고화질 AI 비주얼 이미지 생성 중',
+      voice: '나레이션 음성 합성 중',
+      render: '모션 및 화면 렌더링 중',
+      merge: '영상 및 오디오 트랙 합성 중',
+      captions: '초고화질 자막 입체 번인 중',
+      transcribe: '위스퍼가 음성을 받아쓰는 중'
+    };
+    const label = labelMap[stage] || stage;
+    statusEl.textContent = label + (stage === 'transcribe' ? '' : ` (${cur}/${total})`);
+  });
+
+  // BGM 미리듣기 및 커스텀 MP3 선택 로직
+  let customBgmPath = null;
+  let currentBgmAudio = null;
+  let bgmTimer = null;
+  const bgmSelect = document.getElementById('bgmSelect');
+  const bgmPreviewBtn = document.getElementById('bgmPreviewBtn');
+  const customBgmLabel = document.getElementById('customBgmLabel');
+
+  function stopBgmPreview() {
+    if (currentBgmAudio) {
+      try { currentBgmAudio.pause(); } catch (e) {}
+      currentBgmAudio = null;
+    }
+    if (bgmTimer) {
+      clearTimeout(bgmTimer);
+      bgmTimer = null;
+    }
+    bgmPreviewBtn.textContent = '▶️';
+    const isEn = currentLang === 'en';
+    bgmPreviewBtn.title = isEn ? 'Play 10s preview of selected BGM' : '선택한 BGM 10초 미리듣기';
+  }
+
+  bgmSelect.addEventListener('change', async () => {
+    stopBgmPreview();
+    if (bgmSelect.value === 'custom') {
+      const picked = await window.agent.pickAudio();
+      if (picked && picked.length) {
+        customBgmPath = picked[0];
+        const filename = customBgmPath.split(/[/\\]/).pop();
+        customBgmLabel.textContent = `📁 ${filename}`;
+        customBgmLabel.style.display = '';
+        customBgmLabel.title = customBgmPath;
+      } else {
+        bgmSelect.value = '01_lofi_kurt';
+        customBgmPath = null;
+        customBgmLabel.style.display = 'none';
+      }
+    } else {
+      customBgmPath = null;
+      customBgmLabel.style.display = 'none';
+    }
+  });
+
+  bgmPreviewBtn.addEventListener('click', async () => {
+    if (currentBgmAudio) {
+      stopBgmPreview();
+      return;
+    }
+    const val = bgmSelect.value;
+    const isEn = currentLang === 'en';
+    if (val === 'none') {
+      alert(isEn ? 'No BGM selected. Please select a track first.' : '배경음악 없음 상태입니다. 먼저 곡을 선택해주세요.');
+      return;
+    }
+    bgmPreviewBtn.textContent = '⏳';
+    try {
+      let src = null;
+      if (val === 'custom' && customBgmPath) {
+        src = 'file://' + encodeURI(customBgmPath);
+      } else {
+        src = await window.agent.previewBgm(val);
+      }
+      if (!src) throw new Error(isEn ? 'Failed to load audio file.' : '음원 파일을 불러올 수 없습니다.');
+      const audio = new Audio(src);
+      audio.volume = 0.55;
+      await audio.play();
+      currentBgmAudio = audio;
+      bgmPreviewBtn.textContent = '⏹️';
+      bgmPreviewBtn.title = isEn ? 'Stop preview' : '미리듣기 정지';
+      bgmTimer = setTimeout(() => {
+        stopBgmPreview();
+      }, 10000);
+      audio.onended = () => stopBgmPreview();
+    } catch (e) {
+      alert((isEn ? 'BGM preview failed: ' : 'BGM 미리듣기 실패: ') + e.message);
+      stopBgmPreview();
+    }
+  });
+
+  // 1) 제목 & 자막 선택 토글 이벤트 바인딩
+  const showTitleChk = document.getElementById('showTitleChk');
+  const showSubtitlesChk = document.getElementById('showSubtitlesChk');
+  const titleGroup = document.getElementById('titleControlsGroup');
+  const subGroup = document.getElementById('subtitleControlsGroup');
+
+  function updateTitleSubState() {
+    if (showTitleChk.checked) {
+      titleGroup.style.opacity = '1';
+      titleGroup.style.pointerEvents = 'auto';
+    } else {
+      titleGroup.style.opacity = '0.35';
+      titleGroup.style.pointerEvents = 'none';
+    }
+    if (showSubtitlesChk.checked) {
+      subGroup.style.opacity = '1';
+      subGroup.style.pointerEvents = 'auto';
+    } else {
+      subGroup.style.opacity = '0.35';
+      subGroup.style.pointerEvents = 'none';
+    }
+  }
+  showTitleChk.addEventListener('change', updateTitleSubState);
+  showSubtitlesChk.addEventListener('change', updateTitleSubState);
+  updateTitleSubState();
+
+  // 빌드 실행
+  buildBtn.addEventListener('click', async () => {
+    stopBgmPreview();
+    buildBtn.disabled = true;
+    openBtn.style.display = 'none';
+    statusEl.className = '';
+    try {
+      const showTitle = showTitleChk.checked;
+      const showSubtitles = showSubtitlesChk.checked;
+
+      // 자막이 켜져 있는데 비어 있는 장면이 있다면 AI 스토리 자동 보충
+      if (showSubtitles) {
+        const emptyScenes = scenes.filter((s) => !(s.narration || '').trim());
+        if (emptyScenes.length > 0) {
+          const isEn = currentLang === 'en';
+          statusEl.textContent = isEn ? 'Generating AI stories for empty scenes...' : '비어 있는 장면에 AI 스토리를 자동 생성 중입니다...';
+          try {
+            const drafts = await window.agent.analyze({
+              scenes: emptyScenes.map(s => ({image: s.image, narration: '', title: s.title || ''})),
+              lang: currentLang
+            });
+            let dIdx = 0;
+            scenes.forEach((s) => {
+              if (!(s.narration || '').trim() && drafts && drafts[dIdx]) {
+                s.narration = (drafts[dIdx].narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+                s.keyword = (drafts[dIdx].keyword || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim();
+                dIdx++;
+              }
+            });
+            render();
+          } catch (_) {}
+        }
+      }
+
+      const captionStyle = document.getElementById('captionStyleSelect').value;
+      const shadowStyle = document.getElementById('shadowStyleSelect').value;
+      const sfxPack = document.getElementById('sfxPackSelect').value;
+      const bgmVal = bgmSelect.value === 'custom' ? customBgmPath : bgmSelect.value;
+      const selectedVoice = mainVoiceSelectEl ? mainVoiceSelectEl.value : voiceSelectEl.value;
+      const result = await window.agent.build({
+        voice: selectedVoice,
+        showTitle,
+        showSubtitles,
+        outputMode: document.getElementById('outputModeSelect').value,
+        title: showTitle ? document.getElementById('titleInput').value.replace(/[\[\]\{\}]/g, '').trim() : '',
+        titleMode: document.getElementById('titleModeSelect').value,
+        titleStyle: document.getElementById('titleStyleSelect').value,
+        titleSize: document.getElementById('titleSizeSelect').value,
+        titleColor: document.getElementById('titleColorSelect').value,
+        scenes: scenes.map((s) => ({
+          image: s.image,
+          video: s.video,
+          type: s.type,
+          narration: (s.narration || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim(),
+          motion: s.motion || 'kenburns',
+          sfx: s.sfx,
+          tag: '',
+          originalVoice: !!s.originalVoice,
+          customAudio: s.customAudio || null,
+          start: s.start || 0,
+          end: s.end || 0,
+        })),
+        keywords: scenes.map((s) => (s.keyword || '').replace(/[\[\]\{\}]/g, '').replace(/\s+/g, ' ').trim()),
+        captionStyle,
+        shadowStyle,
+        sfxPack,
+        bgm: bgmVal,
+        bgmVolume: 0.35,
+        aspect: document.getElementById('aspectSelect').value,
+        trimSilence: document.getElementById('trimSilenceChk').checked,
+        shortForm: document.getElementById('shortFormSelect').value,
+      });
+      lastOutput = result.outputPath;
+      statusEl.className = 'done';
+      const isEn = currentLang === 'en';
+      statusEl.textContent = isEn
+        ? `Render complete! ${Math.round(result.totalDuration)}s Shorts saved: ${result.outputPath}`
+        : `완성했습니다. ${Math.round(result.totalDuration)}초 영상 제작 완료: ${result.outputPath}`;
+      openBtn.style.display = '';
+      setStep(null);
+    } catch (e) {
+      statusEl.textContent = (currentLang === 'en' ? 'Error occurred: ' : '오류가 났습니다: ') + e.message;
+    }
+    buildBtn.disabled = false;
+  });
+
+  // Full Bilingual (한국어 / English) i18n Engine
+  let currentLang = localStorage.getItem('vas_lang') || 'en';
+
+  const I18N_OPTIONS = {
+    titleSize: {
+      ko: [
+        {value: 'large', text: '📐 크기: 크게 (108pt - 추천)'},
+        {value: 'xlarge', text: '📐 크기: 아주 크게 (126pt)'},
+        {value: 'normal', text: '📐 크기: 보통 (88pt)'}
+      ],
+      en: [
+        {value: 'large', text: '📐 Size: Large (108pt - Rec.)'},
+        {value: 'xlarge', text: '📐 Size: Extra Large (126pt)'},
+        {value: 'normal', text: '📐 Size: Normal (88pt)'}
+      ]
+    },
+    titleColor: {
+      ko: [
+        {value: 'mintWhite', text: '🌿 2줄 배색: 민트 + 화이트 (추천)'},
+        {value: 'yellowWhite', text: '🟡 2줄 배색: 옐로우 + 화이트'},
+        {value: 'whiteMint', text: '⚪ 2줄 배색: 화이트 + 민트'},
+        {value: 'white', text: '⚪ 단색: 깔끔한 화이트'},
+        {value: 'mintSingle', text: '🌿 단색: 비비드 민트'},
+        {value: 'yellowSingle', text: '🟡 단색: 비비드 옐로우'}
+      ],
+      en: [
+        {value: 'mintWhite', text: '🌿 2-Line: Mint + White (Rec.)'},
+        {value: 'yellowWhite', text: '🟡 2-Line: Yellow + White'},
+        {value: 'whiteMint', text: '⚪ 2-Line: White + Mint'},
+        {value: 'white', text: '⚪ Solid: Clean White'},
+        {value: 'mintSingle', text: '🌿 Solid: Vivid Mint'},
+        {value: 'yellowSingle', text: '🟡 Solid: Vivid Yellow'}
+      ]
+    },
+    titleMode: {
+      ko: [
+        {value: 'fullTime', text: '⏱️ 영상 전체 고정'},
+        {value: 'intro3s', text: '⏱️ 시작 3초만 노출'}
+      ],
+      en: [
+        {value: 'fullTime', text: '⏱️ Full Video Duration'},
+        {value: 'intro3s', text: '⏱️ First 3 Seconds Only'}
+      ]
+    },
+    titleStyle: {
+      ko: [
+        {value: 'shadow', text: '✨ 3D 그림자'},
+        {value: 'boxBar', text: '🏷️ 반투명 헤드라인 바'}
+      ],
+      en: [
+        {value: 'shadow', text: '✨ 3D Drop Shadow'},
+        {value: 'boxBar', text: '🏷️ Semi-Transparent Bar'}
+      ]
+    },
+    outputMode: {
+      ko: [
+        {value: 'both', text: '🎙️+💬 나레이션 + 자막 (기본 추천)'},
+        {value: 'voiceOnly', text: '🎙️ 나레이션만 (음성 전용, 자막 숨김)'},
+        {value: 'subtitlesOnly', text: '💬 자막만 (음악/무음에 자막만 노출)'}
+      ],
+      en: [
+        {value: 'both', text: '🎙️+💬 Voiceover + Subtitles (Rec.)'},
+        {value: 'voiceOnly', text: '🎙️ Voiceover Only (Hidden Subtitles)'},
+        {value: 'subtitlesOnly', text: '💬 Subtitles Only (Music/Silent)'}
+      ]
+    },
+    voices: {
+      ko: [
+        {value: 'Kore', text: '👩 30대 여성 (아나운서/정보 - 기본)'},
+        {value: 'Leda', text: '👧 20대 여성 (상큼·발랄 쇼츠/트렌드)'},
+        {value: 'Puck', text: '👦 20대 남성 (경쾌·활기찬 크리에이터)'},
+        {value: 'Orus', text: '👨 30대 남성 (깔끔·스마트 정보/테크)'},
+        {value: 'Aoede', text: '👩 40대 여성 (우아·따뜻한 라이프/룩북)'},
+        {value: 'Charon', text: '👨 40대 남성 (신뢰감 중저음 전문가)'},
+        {value: 'Zephyr', text: '👩 40·50대 여성 (차분·감성 에세이)'},
+        {value: 'Sulafat', text: '👵 50·60대 시니어 여성 (포근·품격 힐링)'},
+        {value: 'Fenrir', text: '👴 50·60대 시니어 남성 (중후·깊은 다큐)'},
+        {value: 'VoiceBox', text: '🎙️ 대표님 목소리 (VoiceBox AI 복제)'}
+      ],
+      en: [
+        {value: 'Kore', text: '👩 Female 30s (Narrator/Info - Default)'},
+        {value: 'Leda', text: '👧 Female 20s (Fresh & Lively / Shorts)'},
+        {value: 'Puck', text: '👦 Male 20s (Energetic Creator)'},
+        {value: 'Orus', text: '👨 Male 30s (Clean & Smart Tech)'},
+        {value: 'Aoede', text: '👩 Female 40s (Elegant & Warm Lifestyle)'},
+        {value: 'Charon', text: '👨 Male 40s (Deep & Authoritative)'},
+        {value: 'Zephyr', text: '👩 Female 40-50s (Calm & Poetic Essay)'},
+        {value: 'Sulafat', text: '👵 Senior Female 50-60s (Warm Healing)'},
+        {value: 'Fenrir', text: '👴 Senior Male 50-60s (Deep Documentary)'},
+        {value: 'VoiceBox', text: '🎙️ Custom Cloned Voice (VoiceBox AI)'}
+      ]
+    },
+    shadowStyle: {
+      ko: [
+        {value: 'deepShadow', text: '🎨 3D 깊은 그림자'},
+        {value: 'pureShadow', text: '🎨 순수 그림자'},
+        {value: 'thickBorder', text: '🎨 볼드 블랙 테두리'},
+        {value: 'glowShadow', text: '🎨 네온 글로우'}
+      ],
+      en: [
+        {value: 'deepShadow', text: '🎨 3D Deep Shadow'},
+        {value: 'pureShadow', text: '🎨 Pure Shadow'},
+        {value: 'thickBorder', text: '🎨 Bold Black Outline'},
+        {value: 'glowShadow', text: '🎨 Neon Glow'}
+      ]
+    },
+    aspect: {
+      ko: [
+        {value: '9:16', text: '📱 9:16 세로'},
+        {value: '16:9', text: '🖥️ 16:9 가로'},
+        {value: '1:1', text: '⏹️ 1:1 정사각'}
+      ],
+      en: [
+        {value: '9:16', text: '📱 9:16 Portrait (Shorts/Reels)'},
+        {value: '16:9', text: '🖥️ 16:9 Landscape (YouTube)'},
+        {value: '1:1', text: '⏹️ 1:1 Square (Feed)'}
+      ]
+    },
+    bgm: {
+      ko: [
+        {value: '03_piano_forest', text: '🌿 [위로] 포레스트 힐링 피아노'},
+        {value: '11_harmonica_porchblues', text: '🌾 [위로/하모니카] 포크 기타 & 하모니카'},
+        {value: '12_sad_heartbreaking', text: '💧 [애잔한] 서정적인 슬픈 피아노 & 스트링'},
+        {value: '04_acoustic_spring', text: '☀️ [경쾌] 경쾌한 통기타 & 휘파람'},
+        {value: '14_acoustic_carefree', text: '🎸 [경쾌/기타] 신나는 어쿠스틱 기타 & 우쿨렐레'},
+        {value: '15_guitar_easylemon', text: '☕ [기타 연주] 차분하고 부드러운 감성 기타'},
+        {value: '13_dance_monster', text: '🪩 [댄스] 신나는 팝 댄스 & 클럽 비트'},
+        {value: '06_hype_theitch', text: '🎤 [보컬/가사] 신나는 영어 랩&보컬 팝 (NEFFEX)'},
+        {value: '01_lofi_kurt', text: '🎧 [감성] 트렌디 감성 로파이 (Kurt)'},
+        {value: '05_pop_littlefish', text: '🎶 [팝] 산뜻한 데일리 팝 비트'},
+        {value: '02_synth_violet', text: '🌆 [신스] 네온 레트로 신스웨이브'},
+        {value: '07_rock_elevators', text: '⚡ [록] 다이내믹 에너지 록'},
+        {value: '09_viral_monkeys', text: '🐒 [코믹] 숏츠 1위 바이럴 코미디'},
+        {value: '08_comic_sneakysnitch', text: '🕵️ [코믹] 살금살금 꿀잼 미스터리'},
+        {value: '10_playful_duck', text: '🦆 [코믹] 엉뚱발랄 귀여운 오리'},
+        {value: 'none', text: '🔇 배경음악 없음'},
+        {value: 'custom', text: '📁 내 컴퓨터 음악 불러오기...'}
+      ],
+      en: [
+        {value: '03_piano_forest', text: '🌿 [Healing] Forest Lullabye Piano'},
+        {value: '11_harmonica_porchblues', text: '🌾 [Folk] Porch Blues Guitar & Harmonica'},
+        {value: '12_sad_heartbreaking', text: '💧 [Emotional] Heartbreaking Strings & Piano'},
+        {value: '04_acoustic_spring', text: '☀️ [Upbeat] Spring In My Step Acoustic'},
+        {value: '14_acoustic_carefree', text: '🎸 [Cheerful] Carefree Acoustic & Ukulele'},
+        {value: '15_guitar_easylemon', text: '☕ [Acoustic] Easy Lemon Chill Guitar'},
+        {value: '13_dance_monster', text: '🪩 [Dance] Dance Monster Pop Beats'},
+        {value: '06_hype_theitch', text: '🎤 [Vocal] Energetic Rap & Pop (NEFFEX)'},
+        {value: '01_lofi_kurt', text: '🎧 [Lofi] Trendy Chill Lofi (Kurt)'},
+        {value: '05_pop_littlefish', text: '🎶 [Pop] Daily Upbeat Pop (Little Fish)'},
+        {value: '02_synth_violet', text: '🌆 [Synthwave] Neon Retro Synth (Violet)'},
+        {value: '07_rock_elevators', text: '⚡ [Rock] Dynamic Energy Rock'},
+        {value: '09_viral_monkeys', text: '🐒 [Comedy] Viral Shorts Comedy (#1)'},
+        {value: '08_comic_sneakysnitch', text: '🕵️ [Mystery] Sneaky Snitch Funny Theme'},
+        {value: '10_playful_duck', text: '🦆 [Playful] Fluffing a Duck Quirky Theme'},
+        {value: 'none', text: '🔇 No Background Music'},
+        {value: 'custom', text: '📁 Load Music from Computer...'}
+      ]
+    },
+    sfxPack: {
+      ko: [
+        {value: 'variety', text: '예능 풀패키지 (기본)'},
+        {value: 'lecture', text: '테크/강의형'},
+        {value: 'transition', text: '장면전환 휙(whoosh)'},
+        {value: 'none', text: '효과음 없음'}
+      ],
+      en: [
+        {value: 'variety', text: 'Variety Show Full Pack (Default)'},
+        {value: 'lecture', text: 'Tech & Tutorial'},
+        {value: 'transition', text: 'Whoosh Transition'},
+        {value: 'none', text: 'No Sound Effects'}
+      ]
+    },
+    shortForm: {
+      ko: [
+        {value: '0', text: '전체 길이'},
+        {value: '15', text: '숏폼 15초'},
+        {value: '30', text: '숏폼 30초'},
+        {value: '60', text: '숏폼 60초'}
+      ],
+      en: [
+        {value: '0', text: 'Full Duration'},
+        {value: '15', text: '15s Shorts'},
+        {value: '30', text: '30s Shorts'},
+        {value: '60', text: '60s Shorts'}
+      ]
+    }
+  };
+
+  const KOREAN_FONTS = [
+    {value: 'scdream', koText: '🔤 에스코어 드림 (인기 숏폼 고딕)', enText: '🔤 S-Core Dream (Trending Gothic)'},
+    {value: 'jalnan', koText: '🔤 여기어때 잘난체 (타이틀/임팩트)', enText: '🔤 Jalnan (Headline & Impact)'},
+    {value: 'cafe24', koText: '🔤 카페24 단정해 (세련된 고딕)', enText: '🔤 Cafe24 Danjunghae (Sleek Clean)'},
+    {value: 'pretendard', koText: '🔤 프리텐다드 Bold (모던 표준체)', enText: '🔤 Pretendard Bold (Standard Clean)'},
+    {value: 'gmarket', koText: '🔤 G마켓 산스 Bold (볼드 명품체)', enText: '🔤 Gmarket Sans (Bold Luxury)'},
+    {value: 'blackhan', koText: '🔤 검은고딕 블랙 (헤비 임팩트)', enText: '🔤 Black Han Sans (Heavy Punch)'},
+    {value: 'maruburi', koText: '🔤 네이버 마루부리 (감성 명조체)', enText: '🔤 Maru Buri (Emotional Serif)'},
+    {value: 'dohyeon', koText: '🔤 도현체 (방송 예능 자막)', enText: '🔤 DoHyeon (TV Show Caption)'},
+    {value: 'jua', koText: '🔤 주아체 (친근 발랄형)', enText: '🔤 Jua (Friendly & Playful)'},
+    {value: 'myeongjo', koText: '🔤 명조체 (차분한 서정형)', enText: '🔤 Nanum Myeongjo (Classic Serif)'},
+    {value: 'pen', koText: '🔤 손글씨 (감성 감각형)', enText: '🔤 Nanum Pen (Handwritten)'},
+  ];
+
+  const ENGLISH_FONTS = [
+    {value: 'anton', text: '🔤 Anton (TikTok/Shorts #1 Punch)'},
+    {value: 'bebas', text: '🔤 Bebas Neue (Tall Cinematic)'},
+    {value: 'montserrat', text: '🔤 Montserrat (Modern Tech Bold)'},
+    {value: 'poppins', text: '🔤 Poppins (Trendy Creator)'},
+    {value: 'oswald', text: '🔤 Oswald (Impact Headline)'},
+    {value: 'inter', text: '🔤 Inter (Silicon Valley Clean)'},
+    {value: 'playfair', text: '🔤 Playfair Display (Luxury Lookbook)'},
+    {value: 'pacifico', text: '🔤 Pacifico (Vibrant Script)'},
+    {value: 'bangers', text: '🔤 Bangers (Viral Meme/Comic)'},
+    {value: 'caveat', text: '🔤 Caveat (Casual Handwriting)'},
+  ];
+
+  function applySelectOptions(selectEl, list) {
+    if (!selectEl || !list) return;
+    const cur = selectEl.value;
+    selectEl.innerHTML = '';
+    list.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.value;
+      opt.textContent = item.text;
+      if (item.value === cur) opt.selected = true;
+      selectEl.appendChild(opt);
+    });
+    if (cur && Array.from(selectEl.options).some(o => o.value === cur)) {
+      selectEl.value = cur;
+    }
+  }
+
+  function applyFontOptions(selectEl, lang) {
+    if (!selectEl) return;
+    const isEn = lang === 'en';
+    let cur = selectEl.value;
+    selectEl.innerHTML = '';
+
+    const englishGroup = document.createElement('optgroup');
+    englishGroup.label = isEn ? '🇺🇸 Global English Fonts (10 Types)' : '🇺🇸 Global English Fonts (10종)';
+    ENGLISH_FONTS.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.value;
+      o.textContent = f.text;
+      englishGroup.appendChild(o);
+    });
+
+    const koreanGroup = document.createElement('optgroup');
+    koreanGroup.label = isEn ? '🇰🇷 Korean Recommended Fonts (11 Types)' : '🇰🇷 한국어 추천 폰트 (11종)';
+    KOREAN_FONTS.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.value;
+      o.textContent = isEn ? f.enText : f.koText;
+      koreanGroup.appendChild(o);
+    });
+
+    if (isEn) {
+      // English mode: English fonts first!
+      selectEl.appendChild(englishGroup);
+      selectEl.appendChild(koreanGroup);
+      if (!cur || cur === 'scdream' || KOREAN_FONTS.some(k => k.value === cur)) {
+        cur = 'anton';
+      }
+    } else {
+      // Korean mode: Korean fonts first!
+      selectEl.appendChild(koreanGroup);
+      selectEl.appendChild(englishGroup);
+      if (!cur || cur === 'anton' || ENGLISH_FONTS.some(e => e.value === cur)) {
+        cur = 'scdream';
+      }
+    }
+    selectEl.value = cur;
+  }
+
+  function applyLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('vas_lang', lang);
+    const isEn = lang === 'en';
+
+    // Toolbar segmented language pill buttons
+    const langKoBtn = document.getElementById('langKoBtn');
+    const langEnBtn = document.getElementById('langEnBtn');
+    if (langKoBtn && langEnBtn) {
+      if (isEn) {
+        langEnBtn.style.background = '#2563eb';
+        langEnBtn.style.color = '#ffffff';
+        langEnBtn.style.boxShadow = '0 1px 4px rgba(37,99,235,0.4)';
+        langKoBtn.style.background = 'transparent';
+        langKoBtn.style.color = '#64748b';
+        langKoBtn.style.boxShadow = 'none';
+      } else {
+        langKoBtn.style.background = '#2563eb';
+        langKoBtn.style.color = '#ffffff';
+        langKoBtn.style.boxShadow = '0 1px 4px rgba(37,99,235,0.4)';
+        langEnBtn.style.background = 'transparent';
+        langEnBtn.style.color = '#64748b';
+        langEnBtn.style.boxShadow = 'none';
+      }
+    }
+
+    // Header sub
+    const subHeader = document.querySelector('header .sub');
+    if (subHeader) {
+      subHeader.textContent = isEn
+        ? 'Add Photos/Videos · AI Voice & Captions · Viral SFX & BGM · One-Click Shorts Engine'
+        : '사진/영상 추가 · 스마트 음성인식 자막 · 예능 효과음 & BGM · 원클릭 숏폼 제작';
+    }
+
+    // Top action buttons
+    document.getElementById('addBtn').textContent = isEn ? '📷 Add Photos' : '📷 사진 추가';
+    document.getElementById('videoBtn').textContent = isEn ? '🎬 Add Videos' : '🎬 영상 추가';
+    document.getElementById('newBtn').textContent = isEn ? '🆕 New Project' : '🆕 새로 만들기';
+    document.getElementById('settingsBtn').textContent = isEn ? '⚙️ AI Settings' : '⚙️ AI 설정';
+
+    // Toolbar steps
+    document.getElementById('st-plan').textContent = isEn ? '1 Media' : '1 미디어';
+    document.getElementById('st-voice').textContent = isEn ? '2 Voice' : '2 음성';
+    document.getElementById('st-render').textContent = isEn ? '3 Motion/SFX' : '3 모션/SFX';
+    document.getElementById('st-captions').textContent = isEn ? '4 Captions' : '4 자막';
+
+    // Headline card
+    const titleHeadlineLabel = document.getElementById('titleHeadlineLabel');
+    if (titleHeadlineLabel) titleHeadlineLabel.textContent = isEn ? '📌 Top Title (Headline)' : '📌 상단 제목 (헤드라인)';
+    const titleSubLabel = document.getElementById('titleSubLabel');
+    if (titleSubLabel) titleSubLabel.textContent = isEn ? 'Bold Top Headline' : '영상 상단 큰 글씨';
+    document.getElementById('titleInput').placeholder = isEn
+      ? 'Enter Title (e.g. Coding at Lounge | Casual Friday, 2 lines auto-split)'
+      : '제목 입력 (예: 화려한 라운지에서 | 여유로운 코딩, 2줄은 색상 자동 분리)';
+
+    // Subtitle card
+    const subtitleHeadlineLabel = document.getElementById('subtitleHeadlineLabel');
+    if (subtitleHeadlineLabel) subtitleHeadlineLabel.textContent = isEn ? '💬 Subtitles & Age-Group Voice Narration' : '💬 하단 자막 & 연령대별 나레이션 보이스';
+    const subtitleSubLabel = document.getElementById('subtitleSubLabel');
+    if (subtitleSubLabel) subtitleSubLabel.textContent = isEn ? '1-Line Compact Subtitle Burn-In' : '1줄 컴팩트 자막 번인';
+    const aiTipLabel = document.getElementById('aiTipLabel');
+    if (aiTipLabel) aiTipLabel.textContent = isEn
+      ? '✨ AI 1-line vision analysis & scene-by-scene [🎤 Mic Dubbing] auto-sync supported'
+      : '✨ 사진·풍경영상 AI 1줄 분석 & 장면별 [🎤 직접 녹음] 자동 싱크 지원';
+
+    // Action buttons inside cards
+    const autoScriptBtn = document.getElementById('autoScriptBtn');
+    if (autoScriptBtn) {
+      autoScriptBtn.textContent = isEn ? '✨ Generate AI Script' : '✨ AI 1줄 대본 전체 작성';
+      autoScriptBtn.title = isEn ? 'Generate 1-line AI scripts for all photos and videos' : '등록된 모든 사진/영상에 대해 1줄 맞춤 대본을 즉시 작성합니다';
+    }
+    buildBtn.textContent = isEn ? '🎬 Generate Shorts Video' : '🎬 원클릭 영상 만들기';
+
+    // Localize all dropdowns
+    applySelectOptions(document.getElementById('titleSizeSelect'), I18N_OPTIONS.titleSize[lang]);
+    applySelectOptions(document.getElementById('titleColorSelect'), I18N_OPTIONS.titleColor[lang]);
+    applySelectOptions(document.getElementById('titleModeSelect'), I18N_OPTIONS.titleMode[lang]);
+    applySelectOptions(document.getElementById('titleStyleSelect'), I18N_OPTIONS.titleStyle[lang]);
+    applySelectOptions(document.getElementById('outputModeSelect'), I18N_OPTIONS.outputMode[lang]);
+    applySelectOptions(document.getElementById('mainVoiceSelect'), I18N_OPTIONS.voices[lang]);
+    applySelectOptions(document.getElementById('voiceSelect'), I18N_OPTIONS.voices[lang]);
+    applyFontOptions(document.getElementById('captionStyleSelect'), lang);
+    applySelectOptions(document.getElementById('shadowStyleSelect'), I18N_OPTIONS.shadowStyle[lang]);
+    applySelectOptions(document.getElementById('aspectSelect'), I18N_OPTIONS.aspect[lang]);
+    applySelectOptions(document.getElementById('bgmSelect'), I18N_OPTIONS.bgm[lang]);
+    applySelectOptions(document.getElementById('sfxPackSelect'), I18N_OPTIONS.sfxPack[lang]);
+    applySelectOptions(document.getElementById('shortFormSelect'), I18N_OPTIONS.shortForm[lang]);
+
+    // Advanced Drawer labels
+    const advSfxLabel = document.getElementById('advSfxLabel');
+    if (advSfxLabel) advSfxLabel.textContent = isEn ? 'SFX Pack' : '효과음 팩';
+    const advDurLabel = document.getElementById('advDurLabel');
+    if (advDurLabel) advDurLabel.textContent = isEn ? 'Video Duration' : '영상 길이';
+    const advSilenceLabel = document.getElementById('advSilenceLabel');
+    if (advSilenceLabel) advSilenceLabel.textContent = isEn ? 'Auto Cut Silence' : '무음 구간 자동 컷';
+    const isDrawerHidden = advSettingsDrawer.style.display === 'none';
+    toggleAdvBtn.textContent = isDrawerHidden
+      ? (isEn ? '⚙️ Advanced ▾' : '⚙️ 상세 옵션 ▾')
+      : (isEn ? '⚙️ Advanced ▴' : '⚙️ 상세 옵션 ▴');
+
+    // Settings Panel modal
+    const panelTitle = document.querySelector('#settingsPanel .panel-title');
+    if (panelTitle) panelTitle.textContent = isEn ? '⚙️ AI Engine & Voice Settings' : '⚙️ AI 엔진 및 보이스 설정';
+    const panelDesc = document.querySelector('#settingsPanel .panel-desc');
+    if (panelDesc) panelDesc.textContent = isEn
+      ? 'Enter your Google Gemini API key to activate script planning, Gemini Vision image analysis, and high-fidelity TTS narration.'
+      : 'Google Gemini API 키를 입력하면 대본 기획, 고화질 AI 비주얼 이미지 생성, 그리고 Gemini 고품질 TTS가 활성화됩니다. VoiceBox를 선택하면 대표님 목소리로 나레이션이 생성됩니다.';
+    document.getElementById('apiKeyInput').placeholder = isEn ? 'Gemini API Key (aistudio.google.com)' : 'Gemini API 키 (aistudio.google.com)';
+    document.getElementById('modelInput').placeholder = isEn ? 'Model' : '모델';
+    document.getElementById('saveSettingsBtn').textContent = isEn ? 'Save' : '저장';
+
+    // Open button in footer
+    openBtn.textContent = isEn ? '📁 Reveal in Folder' : '📁 폴더에서 보기';
+
+    render();
+    sync();
+  }
+
+  const langKoBtn = document.getElementById('langKoBtn');
+  const langEnBtn = document.getElementById('langEnBtn');
+  if (langKoBtn) langKoBtn.addEventListener('click', () => applyLanguage('ko'));
+  if (langEnBtn) langEnBtn.addEventListener('click', () => applyLanguage('en'));
+
+  applyLanguage(currentLang);
+</script>
+</body>
+</html>
