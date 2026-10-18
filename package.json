@@ -1,11 +1,61 @@
 {
+  "name": "video-agent-studio",
+  "version": "0.8.0",
+  "description": "AI Shorts & Reels Production Studio with Gemini 2.5 Flash & Whisper",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win --x64"
+  },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffprobe-installer/ffprobe": "^2.1.2",
     "pdfjs-dist": "^4.10.38"
   },
-  "description": "이미지나 영상을 넣으면 Vrew 컷 + 캡컷 예능자막 + 리모션 모션그래픽 + SFX 효과음까지 자동으로 만드는 데스크톱 올인원 스튜디오",
-  "main": "main.js",
-  "name": "video-agent-studio",
-  "version": "0.8.0"
+  "build": {
+    "appId": "com.twogosoo.videoagentstudio",
+    "productName": "Video Agent Studio",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!assets/whisper/**",
+      "!dist/**",
+      "!*.dmg"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/bgm",
+        "to": "assets/bgm"
+      },
+      {
+        "from": "assets/fonts",
+        "to": "assets/fonts"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
 }

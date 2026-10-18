@@ -20,17 +20,28 @@ function loadSettings() {
 }
 
 function getFfmpegPath() {
-  let ffmpegPath = '/opt/homebrew/bin/ffmpeg';
+  const isWin = typeof process !== 'undefined' && process.platform === 'win32';
+  const binName = isWin ? 'ffmpeg.exe' : 'ffmpeg';
+  const platformFolder = isWin ? 'win32-x64' : (process.platform === 'darwin' ? (process.arch === 'arm64' ? 'darwin-arm64' : 'darwin-x64') : 'linux-x64');
+  let ffmpegPath = isWin ? 'ffmpeg.exe' : '/opt/homebrew/bin/ffmpeg';
+
   try {
     const p = require('@ffmpeg-installer/ffmpeg').path;
     if (p && fs.existsSync(p)) ffmpegPath = p;
   } catch (_) {}
+
   if (process.resourcesPath) {
-    const bundled = path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@ffmpeg-installer', 'darwin-arm64', 'ffmpeg');
+    const bundled = path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@ffmpeg-installer', platformFolder, binName);
     if (fs.existsSync(bundled)) ffmpegPath = bundled;
+    const direct = path.join(process.resourcesPath, 'bin', binName);
+    if (fs.existsSync(direct)) ffmpegPath = direct;
   }
-  if (!fs.existsSync(ffmpegPath) && fs.existsSync('/usr/local/bin/ffmpeg')) {
-    ffmpegPath = '/usr/local/bin/ffmpeg';
+  if (!fs.existsSync(ffmpegPath)) {
+    if (isWin && fs.existsSync('C:\\ffmpeg\\bin\\ffmpeg.exe')) {
+      ffmpegPath = 'C:\\ffmpeg\\bin\\ffmpeg.exe';
+    } else if (fs.existsSync('/usr/local/bin/ffmpeg')) {
+      ffmpegPath = '/usr/local/bin/ffmpeg';
+    }
   }
   return ffmpegPath;
 }

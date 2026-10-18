@@ -108,15 +108,17 @@ Bundles 15 categorized BGM tracks (Forest Piano, Harmonica Folk, Acoustic Guitar
 ## 🚀 Quick Start
 
 ### Option A: Pre-built Desktop App (Recommended)
-1. Go to [Releases](https://github.com/2gosoo/video-agent-studio/releases).
-2. Download `Video Agent Studio-0.8.0-arm64.dmg` (for Apple Silicon M1/M2/M3/M4 Macs) or `.exe` for Windows.
-3. Open the installer and drag `Video Agent Studio` into your `Applications` folder.
+1. Go to [Releases](https://github.com/2gosooclass/video-agent-studio/releases).
+2. Download the installer for your operating system:
+   * **macOS (Apple Silicon M1/M2/M3/M4)**: Download `Video.Agent.Studio-0.8.0-arm64.dmg`
+   * **Windows 10/11 (64-bit)**: Download `Video-Agent-Studio-Setup-0.8.0.exe` (or portable `Video-Agent-Studio-0.8.0.exe`)
+3. **macOS**: Drag `Video Agent Studio` into your `Applications` folder.
 4. **First launch troubleshooting**: See the [Apple Security & Gatekeeper Guide](#-troubleshooting--installation-guide-macos--windows) below!
 
 ### Option B: Run from Source
 ```bash
 # Clone the repository
-git clone https://github.com/2gosoo/video-agent-studio.git
+git clone https://github.com/2gosooclass/video-agent-studio.git
 cd video-agent-studio
 
 # Install dependencies

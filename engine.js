@@ -3,16 +3,23 @@ const {execFile} = require('child_process');
 const fs = require('fs');
 const path = require('path');
 function resolveBinary(moduleName, defaultName, fallbackPaths = []) {
+  const isWin = typeof process !== 'undefined' && process.platform === 'win32';
+  const binName = isWin ? (defaultName.endsWith('.exe') ? defaultName : `${defaultName}.exe`) : defaultName;
+  const platformFolder = isWin ? 'win32-x64' : (process.platform === 'darwin' ? (process.arch === 'arm64' ? 'darwin-arm64' : 'darwin-x64') : 'linux-x64');
+
   // 1) Electron unpacked resources path FIRST (bundled ffmpeg has libass compiled in!)
   const candidates = [];
   if (typeof process !== 'undefined' && process.resourcesPath) {
-    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@ffmpeg-installer', 'darwin-arm64', 'ffmpeg'));
-    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@ffprobe-installer', 'darwin-arm64', 'ffprobe'));
-    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', moduleName, 'darwin-arm64', defaultName));
+    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@ffmpeg-installer', platformFolder, binName));
+    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@ffprobe-installer', platformFolder, binName));
+    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', moduleName, platformFolder, binName));
+    candidates.push(path.join(process.resourcesPath, 'bin', binName));
+    candidates.push(path.join(process.resourcesPath, binName));
   }
   if (typeof __dirname !== 'undefined') {
-    candidates.push(path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'node_modules', '@ffmpeg-installer', 'darwin-arm64', 'ffmpeg'));
-    candidates.push(path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'node_modules', '@ffprobe-installer', 'darwin-arm64', 'ffprobe'));
+    candidates.push(path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'node_modules', '@ffmpeg-installer', platformFolder, binName));
+    candidates.push(path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'node_modules', '@ffprobe-installer', platformFolder, binName));
+    candidates.push(path.join(__dirname, 'bin', binName));
   }
   for (const c of candidates) {
     if (c.endsWith(defaultName) && fs.existsSync(c)) {
@@ -51,12 +58,16 @@ function resolveBinary(moduleName, defaultName, fallbackPaths = []) {
 let ffmpegPath = resolveBinary('@ffmpeg-installer/ffmpeg', 'ffmpeg', [
   '/Applications/Video Agent Studio.app/Contents/Resources/app.asar.unpacked/node_modules/@ffmpeg-installer/darwin-arm64/ffmpeg',
   '/Applications/Shorts Maker.app/Contents/Resources/app/node_modules/@ffmpeg-installer/darwin-arm64/ffmpeg',
+  'C:\\ffmpeg\\bin\\ffmpeg.exe',
+  'ffmpeg.exe',
   '/opt/homebrew/bin/ffmpeg',
   '/usr/local/bin/ffmpeg'
 ]);
 let ffprobePath = resolveBinary('@ffprobe-installer/ffprobe', 'ffprobe', [
   '/Applications/Video Agent Studio.app/Contents/Resources/app.asar.unpacked/node_modules/@ffprobe-installer/darwin-arm64/ffprobe',
   '/Applications/Shorts Maker.app/Contents/Resources/app/node_modules/@ffprobe-installer/darwin-arm64/ffprobe',
+  'C:\\ffmpeg\\bin\\ffprobe.exe',
+  'ffprobe.exe',
   '/opt/homebrew/bin/ffprobe',
   '/usr/local/bin/ffprobe'
 ]);

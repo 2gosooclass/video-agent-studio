@@ -1,0 +1,57 @@
+name: Build Windows Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag to attach binaries to (e.g. v0.8.0)'
+        required: true
+        default: 'v0.8.0'
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          npm install
+          npm install --save-dev electron@33.4.11 electron-builder@25.1.8
+
+      - name: Setup Windows FFmpeg & FFprobe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path bin
+          Write-Host "Downloading Windows FFmpeg build..."
+          Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -OutFile ffmpeg.zip
+          Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg-temp
+          Get-ChildItem -Path ffmpeg-temp -Recurse -Filter ffmpeg.exe | Select-Object -First 1 | Move-Item -Destination bin/ffmpeg.exe -Force
+          Get-ChildItem -Path ffmpeg-temp -Recurse -Filter ffprobe.exe | Select-Object -First 1 | Move-Item -Destination bin/ffprobe.exe -Force
+          Remove-Item -Recurse -Force ffmpeg.zip, ffmpeg-temp
+          Write-Host "FFmpeg binaries placed in bin/ successfully"
+
+      - name: Build Windows Installer & Portable Executable
+        run: |
+          npx electron-builder --win --x64
+
+      - name: Upload to GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.event.inputs.release_tag || github.event.release.tag_name || 'v0.8.0' }}
+        run: |
+          echo "Uploading Windows release assets to tag: $TAG_NAME"
+          gh release upload "$TAG_NAME" dist/*.exe --clobber
