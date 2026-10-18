@@ -446,7 +446,30 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle('open-file', async (event, filePath) => {
-    shell.showItemInFolder(filePath);
+    try {
+      if (filePath && fs.existsSync(filePath)) {
+        shell.showItemInFolder(filePath);
+        return true;
+      }
+      if (filePath && fs.existsSync(path.dirname(filePath))) {
+        await shell.openPath(path.dirname(filePath));
+        return true;
+      }
+      let baseDir = app.getPath('videos');
+      if (!fs.existsSync(baseDir)) {
+        try { baseDir = app.getPath('movies'); } catch (_) { baseDir = app.getPath('home'); }
+      }
+      const outDir = path.join(baseDir, 'VideoAgent');
+      if (fs.existsSync(outDir)) {
+        await shell.openPath(outDir);
+      } else {
+        await shell.openPath(baseDir);
+      }
+      return true;
+    } catch (e) {
+      console.error('Failed to open folder:', e);
+      return false;
+    }
   });
 
   app.on('activate', () => {
