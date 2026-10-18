@@ -1,8 +1,17 @@
-const {contextBridge, ipcRenderer} = require('electron');
+const {contextBridge, ipcRenderer, webUtils} = require('electron');
 
 contextBridge.exposeInMainWorld('agent', {
   pickImages: () => ipcRenderer.invoke('pick-images'),
   pickVideos: () => ipcRenderer.invoke('pick-videos'),
+  processVideoFiles: (filePaths) => ipcRenderer.invoke('process-video-files', filePaths),
+  getFilePath: (file) => {
+    if (webUtils && typeof webUtils.getPathForFile === 'function') {
+      try {
+        return webUtils.getPathForFile(file);
+      } catch (_) {}
+    }
+    return file.path || '';
+  },
   pickPdf: () => ipcRenderer.invoke('pick-pdf'),
   pickAudio: () => ipcRenderer.invoke('pick-audio'),
   saveSlide: (payload) => ipcRenderer.invoke('save-slide', payload),

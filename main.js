@@ -48,6 +48,7 @@ function getFfmpegPath() {
 
 function createWindow() {
   const win = new BrowserWindow({
+    title: 'Video Agent Studio',
     width: 1220,
     height: 840,
     backgroundColor: '#17181c',
@@ -57,6 +58,13 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+
+  // Prevent Chromium from navigating away to dropped files (fixes raw binary text bug)
+  win.webContents.on('will-navigate', (event) => {
+    event.preventDefault();
+  });
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   return win;
 }
@@ -144,19 +152,15 @@ app.whenReady().then(() => {
     return result;
   });
 
-  ipcMain.handle('pick-videos', async () => {
-    const r = await dialog.showOpenDialog(win, {
-      properties: ['openFile', 'multiSelections'],
-      filters: [{name: 'Videos', extensions: ['mp4', 'mov', 'm4v', 'webm', 'mkv', 'avi']}],
-    });
-    if (r.canceled || !r.filePaths.length) return [];
+  async function generateVideoThumbs(filePaths) {
+    if (!Array.isArray(filePaths) || !filePaths.length) return [];
     const ffmpegPath = getFfmpegPath();
     const thumbDir = path.join(os.tmpdir(), 'video-agent-thumbs');
     fs.mkdirSync(thumbDir, {recursive: true});
     const results = [];
     const {execFile} = require('child_process');
-    for (let i = 0; i < r.filePaths.length; i++) {
-      const fp = r.filePaths[i];
+    for (let i = 0; i < filePaths.length; i++) {
+      const fp = filePaths[i];
       const basename = path.basename(fp);
       const thumbFile = path.join(thumbDir, `thumb-${Date.now()}-${i}.jpg`);
       // 1.2초 지점 고화질(720p) 프레임 추출 (영상이 1.2초보다 짧으면 0.2초 폴백)
@@ -176,6 +180,19 @@ app.whenReady().then(() => {
       });
     }
     return results;
+  }
+
+  ipcMain.handle('pick-videos', async () => {
+    const r = await dialog.showOpenDialog(win, {
+      properties: ['openFile', 'multiSelections'],
+      filters: [{name: 'Videos', extensions: ['mp4', 'mov', 'm4v', 'webm', 'mkv', 'avi']}],
+    });
+    if (r.canceled || !r.filePaths.length) return [];
+    return generateVideoThumbs(r.filePaths);
+  });
+
+  ipcMain.handle('process-video-files', async (event, filePaths) => {
+    return generateVideoThumbs(filePaths);
   });
 
   ipcMain.handle('transcribe-video', async (event, videoPath) => {
