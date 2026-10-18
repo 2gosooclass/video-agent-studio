@@ -480,6 +480,11 @@
         <input type="checkbox" id="trimSilenceChk"> <span id="advSilenceLabel">Auto Cut Silence</span>
       </label>
     </div>
+    <div class="adv-item">
+      <label style="cursor:pointer; display:flex; align-items:center; gap:5px; color:#38bdf8; font-weight:600;">
+        <input type="checkbox" id="autoMosaicChk"> <span id="advMosaicLabel">🛡️ AI 초상권 보호 (얼굴/인물 자동 모자이크)</span>
+      </label>
+    </div>
   </div>
 </div>
 <footer>
@@ -1503,6 +1508,7 @@
         bgmVolume: 0.35,
         aspect: document.getElementById('aspectSelect').value,
         trimSilence: document.getElementById('trimSilenceChk').checked,
+        autoMosaic: document.getElementById('autoMosaicChk') ? document.getElementById('autoMosaicChk').checked : false,
         shortForm: document.getElementById('shortFormSelect').value,
       });
       lastOutput = result.outputPath;
@@ -1887,6 +1893,8 @@
     if (advDurLabel) advDurLabel.textContent = isEn ? 'Video Duration' : '영상 길이';
     const advSilenceLabel = document.getElementById('advSilenceLabel');
     if (advSilenceLabel) advSilenceLabel.textContent = isEn ? 'Auto Cut Silence' : '무음 구간 자동 컷';
+    const advMosaicLabel = document.getElementById('advMosaicLabel');
+    if (advMosaicLabel) advMosaicLabel.textContent = isEn ? '🛡️ AI Privacy Mosaic (Faces/People)' : '🛡️ AI 초상권 보호 (얼굴/인물 자동 모자이크)';
     const isDrawerHidden = advSettingsDrawer.style.display === 'none';
     toggleAdvBtn.textContent = isDrawerHidden
       ? (isEn ? '⚙️ Advanced ▾' : '⚙️ 상세 옵션 ▾')

@@ -116,6 +116,43 @@ function run(cmd, args) {
   });
 }
 
+async function applyAutoMosaic(srcPath, dstPath) {
+  const candidates = [];
+  if (typeof __dirname !== 'undefined') {
+    candidates.push(path.join(__dirname, 'tools', 'mosaic_macos'));
+    candidates.push(path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'tools', 'mosaic_macos'));
+  }
+  if (typeof process !== 'undefined' && process.resourcesPath) {
+    candidates.push(path.join(process.resourcesPath, 'bin', 'mosaic_macos'));
+    candidates.push(path.join(process.resourcesPath, 'tools', 'mosaic_macos'));
+    candidates.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'tools', 'mosaic_macos'));
+  }
+
+  for (const bin of candidates) {
+    if (fs.existsSync(bin)) {
+      try {
+        await run(bin, [srcPath, dstPath]);
+        if (fs.existsSync(dstPath)) return dstPath;
+      } catch (e) {
+        console.warn('[AutoMosaic] binary failed, trying fallback', e);
+      }
+    }
+  }
+
+  const swiftScript = typeof __dirname !== 'undefined'
+    ? path.join(__dirname.replace('app.asar', 'app.asar.unpacked'), 'tools', 'single_mosaic.swift')
+    : null;
+  if (swiftScript && fs.existsSync(swiftScript)) {
+    try {
+      await run('swift', [swiftScript, srcPath, dstPath]);
+      if (fs.existsSync(dstPath)) return dstPath;
+    } catch (_) {}
+  }
+
+  fs.copyFileSync(srcPath, dstPath);
+  return dstPath;
+}
+
 async function duration(file) {
   const out = await run(ffprobePath, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]);
   return parseFloat(out.trim());
@@ -237,6 +274,7 @@ async function buildProject(project, onProgress) {
     showSubtitles = true,
     outputMode = 'both', // 'both', 'voiceOnly', 'subtitlesOnly'
     sfxPack = 'variety', // variety, lecture, transition, none
+    autoMosaic = false,
   } = project;
   const preset = CAPTION_PRESETS[captionStyle] || CAPTION_PRESETS.scdream || CAPTION_PRESETS.blackhan;
   const [VW, VH] = ASPECTS[aspect] || ASPECTS['9:16'];
@@ -434,6 +472,19 @@ async function buildProject(project, onProgress) {
                 }
               } catch (_) {}
             }
+          }
+        }
+
+        // 3) AI 초상권 안심 보호 (얼굴 및 인물 자동 모자이크)
+        if (autoMosaic) {
+          try {
+            const mosaicImg = path.join(segDir, `mosaic_${n}.png`);
+            await applyAutoMosaic(sceneImg, mosaicImg);
+            if (fs.existsSync(mosaicImg)) {
+              sceneImg = mosaicImg;
+            }
+          } catch (err) {
+            console.warn('[AutoMosaic] Failed to process scene', n, err);
           }
         }
       }
@@ -782,6 +833,7 @@ async function buildVideoProject(project, onProgress) {
     whisper,
     title = '',
     trimSilence = false,
+    autoMosaic = false,
     shortForm = 0,
     videoPaths = [],
     sfxPack = 'variety'
