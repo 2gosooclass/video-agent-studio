@@ -378,17 +378,15 @@ async function buildProject(project, onProgress) {
     const rawMotion = curScene.motion || 'auto';
     let chosenMotion = rawMotion;
     if (chosenMotion === 'auto' || chosenMotion === 'kenburns') {
-      const autoCycle = ['zoomIn', 'tiltDown', 'zoomOut', 'tiltUp', 'fade'];
+      const autoCycle = ['zoomIn', 'tiltDown', 'zoomOut', 'tiltUp'];
       chosenMotion = autoCycle[i % autoCycle.length];
     }
 
-    const fadeStart = Math.max(0, segDur - 0.35).toFixed(2);
-    const fadeFilter = `fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeStart}:d=0.35`;
-
     if (scenes[i].video && fs.existsSync(scenes[i].video)) {
       // 영상 클립 + 더빙(TTS 또는 직접 녹음) 길이 자동 맞춤 싱크 엔진:
-      // - 영상이 더빙보다 길면: 더빙 길이(segDur)에 맞춰 자연스럽게 커팅 및 페이드아웃
+      // - 영상이 더빙보다 길면: 더빙 길이(segDur)에 맞춰 자연스럽게 커팅
       // - 영상이 더빙보다 짧으면: 끊기는 점프컷 루프 대신 배속(setpts)을 부드럽게 늘려 영상과 더빙 끝점을 100% 일치시킴
+      // - 첫 프레임(0.00초)부터 100% 선명하게 노출 (블랙 페이드인 완전 제거로 쇼츠/릴스 0.5초 이탈 방지)
       let vidDur = segDur;
       try {
         vidDur = await duration(scenes[i].video);
@@ -403,7 +401,7 @@ async function buildProject(project, onProgress) {
         '-stream_loop', '-1', '-i', scenes[i].video,
         '-i', mixedAudioPath,
         '-filter_complex',
-        `[0:v]${speedFilter}scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS},${fadeFilter}[v];[1:a]apad[a]`,
+        `[0:v]${speedFilter}scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH},fps=${FPS}[v];[1:a]apad[a]`,
         '-map', '[v]', '-map', '[a]', '-t', String(segDur),
         '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', segPath,
       ]);
@@ -442,20 +440,27 @@ async function buildProject(project, onProgress) {
 
       let vFilter = '';
       if (chosenMotion === 'zoomIn') {
-        // 부드럽고 생동감 넘치는 줌인 (1.02배 -> 1.20배) + 페이드 인아웃
-        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.02+0.18*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS},${fadeFilter}[v];[1:a]apad[a]`;
+        // 부드럽고 생동감 넘치는 줌인 (1.02배 -> 1.20배) - 키네틱 컷 (블랙 스크린 없음)
+        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.02+0.18*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v];[1:a]apad[a]`;
       } else if (chosenMotion === 'zoomOut') {
-        // 부드러운 줌아웃 (1.20배 -> 1.02배) + 페이드 인아웃
-        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.20-0.18*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS},${fadeFilter}[v];[1:a]apad[a]`;
+        // 부드러운 줌아웃 (1.20배 -> 1.02배) - 키네틱 컷 (블랙 스크린 없음)
+        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.20-0.18*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v];[1:a]apad[a]`;
       } else if (chosenMotion === 'tiltDown') {
-        // 위에서 아래로 세련되게 훑어내리는 틸트 다운 + 페이드 인아웃
-        vFilter = `[0:v]scale=1200:2280:force_original_aspect_ratio=increase,crop=1200:2280,zoompan=z=1.18:x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*(on/${frames})':d=${frames}:s=${VW}x${VH}:fps=${FPS},${fadeFilter}[v];[1:a]apad[a]`;
+        // 위에서 아래로 세련되게 훑어내리는 틸트 다운 - 키네틱 컷 (블랙 스크린 없음)
+        vFilter = `[0:v]scale=1200:2280:force_original_aspect_ratio=increase,crop=1200:2280,zoompan=z=1.18:x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*(on/${frames})':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v];[1:a]apad[a]`;
       } else if (chosenMotion === 'tiltUp') {
-        // 아래에서 위로 감상하는 틸트 업 + 페이드 인아웃
-        vFilter = `[0:v]scale=1200:2280:force_original_aspect_ratio=increase,crop=1200:2280,zoompan=z=1.18:x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*(1-on/${frames})':d=${frames}:s=${VW}x${VH}:fps=${FPS},${fadeFilter}[v];[1:a]apad[a]`;
+        // 아래에서 위로 감상하는 틸트 업 - 키네틱 컷 (블랙 스크린 없음)
+        vFilter = `[0:v]scale=1200:2280:force_original_aspect_ratio=increase,crop=1200:2280,zoompan=z=1.18:x='(iw-iw/zoom)/2':y='(ih-ih/zoom)*(1-on/${frames})':d=${frames}:s=${VW}x${VH}:fps=${FPS}[v];[1:a]apad[a]`;
       } else if (chosenMotion === 'fade') {
-        // 부드러운 전환과 우아한 미세 무빙
-        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.02+0.08*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS},fade=t=in:st=0:d=0.5,fade=t=out:st=${Math.max(0, segDur - 0.5).toFixed(2)}:d=0.5[v];[1:a]apad[a]`;
+        // 우아한 미세 무빙 (첫 씬은 쇼츠 0.00초 썸네일/이탈 방지를 위해 페이드인 생략하고 즉시 100% 노출)
+        const fadeFilters = [];
+        if (i > 0) {
+          fadeFilters.push('fade=t=in:st=0:d=0.3');
+        }
+        const fadeOutStart = Math.max(0, segDur - 0.3).toFixed(2);
+        fadeFilters.push(`fade=t=out:st=${fadeOutStart}:d=0.3`);
+        const fadeStr = fadeFilters.length ? ',' + fadeFilters.join(',') : '';
+        vFilter = `[0:v]scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='1.02+0.08*(on/${frames})':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${VW}x${VH}:fps=${FPS}${fadeStr}[v];[1:a]apad[a]`;
       } else {
         // 정지 화면 (Static)
         vFilter = `[0:v]scale=${VW}:${VH}:force_original_aspect_ratio=increase,crop=${VW}:${VH}[v];[1:a]apad[a]`;
