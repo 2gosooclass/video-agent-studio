@@ -238,59 +238,89 @@ app.whenReady().then(() => {
   });
 
   // 내 목소리 직접 녹음 저장 & 자동 받아쓰기 (Whisper)
-  ipcMain.handle('save-recorded-audio', async (event, {base64, ext = 'webm'}) => {
-    const ffmpegPath = getFfmpegPath();
-    const recDir = path.join(os.tmpdir(), 'video-agent-recordings');
-    fs.mkdirSync(recDir, {recursive: true});
-    const stamp = Date.now();
-    const rawPath = path.join(recDir, `raw-${stamp}.${ext}`);
-    const wavPath = path.join(recDir, `rec-${stamp}.wav`);
-    fs.writeFileSync(rawPath, Buffer.from(base64, 'base64'));
-
-    const {execFile} = require('child_process');
-    await new Promise((resolve, reject) => {
-      execFile(ffmpegPath, ['-y', '-loglevel', 'error', '-i', rawPath, '-ar', '44100', '-ac', '2', wavPath], (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-
-    // 녹음된 길이 측정 및 위스퍼로 대사 자동 추출
-    let durSec = 0;
-    let transcript = '';
+  ipcMain.handle('save-recorded-audio', async (event, payload) => {
     try {
-      const whisperDir = app.isPackaged
-        ? path.join(process.resourcesPath, 'whisper')
-        : path.join(__dirname, 'assets', 'whisper');
-      const whisperBin = path.join(whisperDir, process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli');
-      const modelPath = path.join(whisperDir, 'ggml-small.bin');
-      const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-agent-rec-tr-'));
-      try {
-        const {transcribe} = require('./whisper');
-        const segs = await transcribe({
-          videoPath: wavPath,
-          workDir,
-          ffmpegPath,
-          whisperBin,
-          modelPath,
-          language: 'ko',
-        });
-        if (segs && segs.length) {
-          transcript = segs.map((s) => s.text).join(' ').trim();
-          durSec = segs[segs.length - 1].end;
-        }
-      } finally {
-        try { fs.rmSync(workDir, {recursive: true, force: true}); } catch (_) {}
-      }
-    } catch (_) {}
+      const ffmpegPath = getFfmpegPath();
+      const recDir = path.join(os.tmpdir(), 'video-agent-recordings');
+      fs.mkdirSync(recDir, {recursive: true});
+      const stamp = Date.now();
+      const ext = (payload && payload.ext) || 'webm';
+      const rawPath = path.join(recDir, `raw-${stamp}.${ext}`);
+      const wavPath = path.join(recDir, `rec-${stamp}.wav`);
 
-    const dataUri = 'data:audio/wav;base64,' + fs.readFileSync(wavPath).toString('base64');
-    return {
-      audioPath: wavPath,
-      dataUri,
-      duration: durSec,
-      transcript,
-    };
+      let audioBuf;
+      if (payload && payload.buffer) {
+        if (Buffer.isBuffer(payload.buffer)) {
+          audioBuf = payload.buffer;
+        } else if (payload.buffer instanceof Uint8Array || payload.buffer instanceof ArrayBuffer) {
+          audioBuf = Buffer.from(payload.buffer);
+        } else if (typeof payload.buffer === 'object') {
+          audioBuf = Buffer.from(Object.values(payload.buffer));
+        }
+      } else if (payload && payload.base64) {
+        audioBuf = Buffer.from(payload.base64.replace(/^data:audio\/\w+;base64,/, ''), 'base64');
+      } else if (typeof payload === 'string') {
+        audioBuf = Buffer.from(payload.replace(/^data:audio\/\w+;base64,/, ''), 'base64');
+      } else if (Buffer.isBuffer(payload)) {
+        audioBuf = payload;
+      }
+
+      if (!audioBuf || audioBuf.length === 0) {
+        return {success: false, error: '녹음 오디오 데이터가 비어 있습니다.'};
+      }
+
+      fs.writeFileSync(rawPath, audioBuf);
+
+      const {execFile} = require('child_process');
+      await new Promise((resolve, reject) => {
+        execFile(ffmpegPath, ['-y', '-loglevel', 'error', '-i', rawPath, '-ar', '44100', '-ac', '2', wavPath], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      // 녹음된 길이 측정 및 위스퍼로 대사 자동 추출
+      let durSec = 0;
+      let transcript = '';
+      try {
+        const whisperDir = app.isPackaged
+          ? path.join(process.resourcesPath, 'whisper')
+          : path.join(__dirname, 'assets', 'whisper');
+        const whisperBin = path.join(whisperDir, process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli');
+        const modelPath = path.join(whisperDir, 'ggml-small.bin');
+        const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-agent-rec-tr-'));
+        try {
+          const {transcribe} = require('./whisper');
+          const segs = await transcribe({
+            videoPath: wavPath,
+            workDir,
+            ffmpegPath,
+            whisperBin,
+            modelPath,
+            language: 'ko',
+          });
+          if (segs && segs.length) {
+            transcript = segs.map((s) => s.text).join(' ').trim();
+            durSec = segs[segs.length - 1].end;
+          }
+        } finally {
+          try { fs.rmSync(workDir, {recursive: true, force: true}); } catch (_) {}
+        }
+      } catch (_) {}
+
+      const dataUri = 'data:audio/wav;base64,' + fs.readFileSync(wavPath).toString('base64');
+      return {
+        success: true,
+        audioPath: wavPath,
+        dataUri,
+        duration: durSec,
+        transcript,
+        text: transcript,
+      };
+    } catch (err) {
+      console.error('save-recorded-audio 처리 오류:', err);
+      return {success: false, error: err.message};
+    }
   });
 
   // 연령대별 나레이션 보이스 미리듣기

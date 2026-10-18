@@ -724,9 +724,22 @@
           try {
             const blob = new Blob(activeRecordedChunks, { type: 'audio/webm' });
             const arrayBuffer = await blob.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            let base64 = '';
+            try {
+              let binary = '';
+              const len = uint8Array.byteLength;
+              for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(uint8Array[i]);
+              }
+              base64 = window.btoa(binary);
+            } catch (_) {}
+
             const res = await window.agent.saveRecordedAudio({
               sceneIndex: idx,
-              buffer: new Uint8Array(arrayBuffer),
+              buffer: uint8Array,
+              base64,
+              ext: 'webm',
             });
             if (res && res.success) {
               s.customAudio = res.audioPath;
