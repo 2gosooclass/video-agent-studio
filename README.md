@@ -26,6 +26,20 @@
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License"/>
 </p>
 
+<p align="center">
+  <a href="https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-0.8.0-arm64.dmg">
+    <img src="https://img.shields.io/badge/🍏_Direct_Download-macOS_Apple_Silicon_(740MB)-181717?style=for-the-badge&logo=apple&logoColor=white" alt="Download macOS DMG"/>
+  </a>
+  &nbsp;
+  <a href="https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0">
+    <img src="https://img.shields.io/badge/🪟_Direct_Download-Windows_10%2F11_(Setup_.exe)-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Download Windows Installer"/>
+  </a>
+  &nbsp;
+  <a href="https://github.com/2gosooclass/video-agent-studio/releases/latest">
+    <img src="https://img.shields.io/badge/📦_GitHub_Releases-v0.8.0_Latest-2ea44f?style=for-the-badge&logo=github&logoColor=white" alt="View Releases"/>
+  </a>
+</p>
+
 ---
 
 ## 💡 Why Video Agent Studio?
@@ -107,13 +121,18 @@ Bundles 15 categorized BGM tracks (Forest Piano, Harmonica Folk, Acoustic Guitar
 
 ## 🚀 Quick Start
 
-### Option A: Pre-built Desktop App (Recommended)
-1. Go to [Releases](https://github.com/2gosooclass/video-agent-studio/releases).
-2. Download the installer for your operating system:
-   * **macOS (Apple Silicon M1/M2/M3/M4)**: Download `Video.Agent.Studio-0.8.0-arm64.dmg`
-   * **Windows 10/11 (64-bit)**: Download `Video-Agent-Studio-Setup-0.8.0.exe` (or portable `Video-Agent-Studio-0.8.0.exe`)
-3. **macOS**: Drag `Video Agent Studio` into your `Applications` folder.
-4. **First launch troubleshooting**: See the [Apple Security & Gatekeeper Guide](#-troubleshooting--installation-guide-macos--windows) below!
+### Option A: Pre-built Desktop App (Direct Download)
+
+| Operating System | Installer Format | Direct Download Link | Architecture |
+| :--- | :--- | :--- | :--- |
+| 🍏 **macOS** | `.dmg` (Disk Image) | [⬇️ **Download macOS DMG (740MB)**](https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-0.8.0-arm64.dmg) | Apple Silicon (M1/M2/M3/M4) |
+| 🪟 **Windows** | `.exe` (Setup Wizard) | [⬇️ **Download Windows Setup.exe**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | Windows 10 / 11 (64-bit) |
+| 🪟 **Windows Portable** | `.exe` (No Install) | [⬇️ **Download Windows Portable.exe**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | Windows 10 / 11 (64-bit) |
+| 📦 **All Assets** | All Platforms | [🔗 **Browse GitHub Releases (v0.8.0)**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | Multi-Platform |
+
+> 💡 **macOS First-Launch Note**: If macOS displays *"damaged and can't be opened"* or *"unidentified developer"*, simply run `xattr -cr "/Applications/Video Agent Studio.app"` in Terminal. See [Apple Security Guide](#-troubleshooting--installation-guide-macos--windows) below!
+> 
+> 💡 **Windows First-Launch Note**: If Windows Defender SmartScreen shows *"Windows protected your PC"*, click **More info** -> **Run anyway**.
 
 ### Option B: Run from Source
 ```bash
@@ -202,6 +221,17 @@ When launching `Video Agent Studio-Setup.exe` on Windows:
 * **2줄 배색 제목**: 제목이 2줄일 경우 1줄(민트/옐로우), 2줄(화이트)로 대비 색상을 적용하여 숏폼 트렌드 감성을 극대화합니다.
 * **3단 출력 모드**: [나레이션+자막], [나레이션만], [자막만] 중 원하는 조합을 클릭 한 번으로 선택할 수 있습니다.
 * **한글 11종 & 영문 10종 폰트**: 에스코어 드림, 여기어때 잘난체, 카페24 단정해, 프리텐다드, G마켓 산스, Anton, Bebas Neue 등 인기 크리에이터 폰트 21종을 기본 내장했습니다.
+
+---
+
+### 💾 원클릭 즉시 다운로드 (운영체제별)
+
+| 운영체제 | 파일 형식 | 바로 다운로드 링크 | 지원 환경 |
+| :--- | :--- | :--- | :--- |
+| 🍏 **맥 (macOS)** | `.dmg` | [⬇️ **맥용 설치 파일 다운로드 (740MB)**](https://github.com/2gosooclass/video-agent-studio/releases/download/v0.8.0/Video.Agent.Studio-0.8.0-arm64.dmg) | Apple Silicon (M1/M2/M3/M4) |
+| 🪟 **윈도우 (Windows)** | `.exe` | [⬇️ **윈도우 설치 파일 (Setup.exe)**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | Windows 10 / 11 (64-bit) |
+| 🪟 **윈도우 무설치** | `.exe` | [⬇️ **윈도우 포터블 (Portable.exe)**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | Windows 10 / 11 (64-bit) |
+| 📦 **전체 릴리즈 목록** | All | [🔗 **깃허브 공식 릴리즈 페이지 바로가기**](https://github.com/2gosooclass/video-agent-studio/releases/tag/v0.8.0) | 전체 플랫폼 |
 
 ---
 
