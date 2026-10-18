@@ -287,12 +287,16 @@ async function detectMosaicTargetsViaGemini({apiKey, model = 'gemini-2.5-flash',
     const mimeType = MIME[ext] || 'image/jpeg';
 
     const systemInstruction = [
-      'You are a high-precision computer vision visual grounding AI assistant.',
-      `The user wants to detect target regions for privacy mosaic or blurring: "${prompt}".`,
-      'Detect 2D bounding boxes for all matching entities or objects (e.g. specific persons, background bystanders, car license plates, screens, logos).',
-      'If the request is for specific person(s) or people, return the face or head region (focusing on the core 80% facial area).',
-      'If the request is for car license plates, return the exact license plate box.',
-      'Output strictly a JSON array of objects in this format:',
+      'You are a high-precision computer vision spatial grounding model.',
+      `User privacy mosaic request: "${prompt}".`,
+      'Tasks:',
+      '1. Identify all people or target objects.',
+      '2. If the user asks for people by position or count (e.g. "맨마지막 인물 두명", "오른쪽 2명만", "남편 외 다른 사람", "가운데 사람"):',
+      '   - Count individuals strictly (from left to right in order).',
+      '   - If there are 5 people and user asked for the last 2 persons, select strictly the rightmost 2 individuals.',
+      '   - Return each person as an individual bounding box [ymin, xmin, ymax, xmax]. Do not group multiple people into a single box.',
+      '3. If the request is for car license plates, screens, or objects, return the exact object rectangle.',
+      '4. Output strictly a JSON array of objects in this format:',
       '[{"box_2d": [ymin, xmin, ymax, xmax], "label": "description"}]',
       'where ymin, xmin, ymax, xmax are normalized integers between 0 and 1000.',
       'Return ONLY the JSON array without markdown formatting or other text.'
